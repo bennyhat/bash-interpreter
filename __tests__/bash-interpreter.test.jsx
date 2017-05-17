@@ -214,4 +214,111 @@ describe('BashInterpreter', () => {
       expect(newState.interpreterOutput).toEqual('dsomethinge\n');
     });
   });
+  describe('given a variable expansion and concatenation in an assignment', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "prefix": [
+              {
+                "text": "a=${c}something$d",
+                "expansion": [
+                  {
+                    "loc": {
+                      "start": 2,
+                      "end": 5
+                    },
+                    "parameter": "c",
+                    "type": "ParameterExpansion"
+                  },
+                  {
+                    "loc": {
+                      "start": 15,
+                      "end": 16
+                    },
+                    "parameter": "d",
+                    "type": "ParameterExpansion"
+                  }
+                ],
+                "type": "AssignmentWord"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {
+          'c': 'd',
+          'd': 'e'
+        },
+        commandScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = bashInterpreter(incomingState);
+    });
+
+    it('sets the variable to the concatenation results', () => {
+      expect(newState.interpreterState.shellScope.a).toEqual('dsomethinge');
+    });
+  });
+  describe('given a variable expansion in multiple assignments', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "prefix": [
+              {
+                "text": "a=something",
+                "type": "AssignmentWord"
+              },
+              {
+                "text": "b=$a",
+                "expansion": [
+                  {
+                    "loc": {
+                      "start": 2,
+                      "end": 3
+                    },
+                    "parameter": "a",
+                    "type": "ParameterExpansion"
+                  }
+                ],
+                "type": "AssignmentWord"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {
+          'c': 'd',
+          'd': 'e'
+        },
+        commandScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = bashInterpreter(incomingState);
+    });
+
+    it('sets the first variable to the literal', () => {
+      expect(newState.interpreterState.shellScope.a).toEqual('something');
+    });
+    it('sets the second variable to the value of the first', () => {
+      expect(newState.interpreterState.shellScope.b).toEqual('something');
+    });
+  });
 });

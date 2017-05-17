@@ -8,8 +8,13 @@ let outgoingState = {
 function generateAssignmentMap(assignmentList = []) {
   let assignmentMap = {};
   assignmentList.forEach((assignment) => {
-    const splitAssignment = assignment.text.split('=');
-    assignmentMap[splitAssignment[0]] = splitAssignment[1];
+    const expandedText = expandVariables(assignment.text, assignment.expansion, [outgoingState.interpreterState.shellScope]);
+    const splitText = expandedText.split('=');
+
+    const name = splitText[0];
+    const value = splitText[1];
+
+    assignmentMap[name] = value;
   });
   return assignmentMap;
 }
@@ -41,37 +46,42 @@ function expandVariables(originalText, expansionList = [], scopeList = []) {
 }
 
 const commandToFunctionMap = {
-  'noop': () => {
-  },
-  'assign': (prefixes, ignored, assignmentScope) => {
-    let assignmentMap = generateAssignmentMap(prefixes);
-    Object.assign(assignmentScope, assignmentScope, assignmentMap);
-  },
-  'echo': (prefixes, suffixes) => {
-    outgoingState.interpreterOutput = suffixes.map((suffix) => {
+  'echo': (suffixes) => {
+    return suffixes.map((suffix) => {
         return expandVariables(suffix.text, suffix.expansion, [outgoingState.interpreterState.shellScope]);
       }).join(' ') + '\n';
   }
 };
-const tokenToFunctionMap = {
-  'Command': (name, prefixes, suffixes) => {
-    let commandName = 'noop';
-    let assignmentScope = outgoingState.interpreterState.shellScope;
-    if (typeof name === 'object') {
-      commandName = name.text;
-      assignmentScope = outgoingState.interpreterState.commandScope;
-    }
-    commandToFunctionMap['assign'](prefixes, suffixes, assignmentScope);
-    commandToFunctionMap[commandName](prefixes, suffixes);
-  }
-};
+
+function assignVariables(name, assignments) {
+  let scope = interpretingCommand(name) ?
+    outgoingState.interpreterState.commandScope :
+    outgoingState.interpreterState.shellScope;
+
+  let assignmentMap = generateAssignmentMap(assignments);
+  Object.assign(scope, scope, assignmentMap);
+}
+
+function executeCommand(name, suffixes) {
+  if (!interpretingCommand(name)) return '';
+  return commandToFunctionMap[name.text](suffixes);
+}
+
+function interpretingCommand(name) {
+  return typeof name === 'object';
+}
+
+function interpretCommand(name, prefixes, suffixes) {
+  assignVariables(name, prefixes);
+  return executeCommand(name, suffixes);
+}
 
 module.exports = function bashInterpreter(incomingState) {
   const parserOutput = incomingState.parserOutput;
   Object.assign(outgoingState, outgoingState, incomingState); // TODO - this is not a deep copy
 
   parserOutput.commands.forEach((command) => {
-    tokenToFunctionMap[command.type](command.name, command.prefix, command.suffix);
+    outgoingState.interpreterOutput += interpretCommand(command.name, command.prefix, command.suffix);
   });
   return outgoingState;
 };
