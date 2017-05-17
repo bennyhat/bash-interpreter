@@ -1,11 +1,19 @@
 let configuration = {
-  commandToFunctionMap: {}
+  commandToFunctionMap: {
+    'export': (environment, parameterList) => {
+      const assignmentList = parameterList.map((parameter) => {
+        return {text: parameter};
+      });
+      assignVariables({text: 'export'}, assignmentList, outgoingState.interpreterState.exportedScope);
+    }
+  }
 };
 
 let outgoingState = {
   interpreterState: {
     shellScope: {},
-    commandScope: {}
+    commandScope: {},
+    exportedScope: {}
   }
 };
 
@@ -49,12 +57,11 @@ function expandVariables(originalText, expansionList = [], scopeList = []) {
   }, originalText);
 }
 
-function assignVariables(name, assignments) {
-  let scope = interpretingCommand(name) ?
-    outgoingState.interpreterState.commandScope :
-    outgoingState.interpreterState.shellScope;
+function assignVariables(name, assignmentList, scope = interpretingCommand(name) ?
+  outgoingState.interpreterState.commandScope :
+  outgoingState.interpreterState.shellScope) {
 
-  let assignmentMap = generateAssignmentMap(assignments);
+  let assignmentMap = generateAssignmentMap(assignmentList);
   Object.assign(scope, scope, assignmentMap);
 }
 
@@ -65,7 +72,8 @@ function executeCommand(name, suffixes) {
   }).filter((expandedSuffix) => {
     return expandedSuffix !== '';
   });
-  return configuration.commandToFunctionMap[name.text](outgoingState.interpreterState.commandScope, ...commandArguments);
+  const commandScope = Object.assign({}, outgoingState.interpreterState.commandScope, outgoingState.interpreterState.exportedScope);
+  return configuration.commandToFunctionMap[name.text](commandScope, commandArguments);
 }
 
 function interpretingCommand(name) {
