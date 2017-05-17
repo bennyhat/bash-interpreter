@@ -2,7 +2,7 @@
   "name": "bash-interpreter",
   "version": "1.0.0",
   "description": "A Bash interpreter implementation utilizes an external state, ServiceWorker, etc.",
-  "main": "index.js",
+  "main": "src/interpret-script.jsx",
   "devDependencies": {
     "babel-core": "^6.13.2",
     "babel-loader": "^6.2.4",

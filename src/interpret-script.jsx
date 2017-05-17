@@ -1,3 +1,7 @@
+let configuration = {
+  commandToFunctionMap: {}
+};
+
 let outgoingState = {
   interpreterState: {
     shellScope: {},
@@ -45,14 +49,6 @@ function expandVariables(originalText, expansionList = [], scopeList = []) {
   }, originalText);
 }
 
-const commandToFunctionMap = {
-  'echo': (suffixes) => {
-    return suffixes.map((suffix) => {
-        return expandVariables(suffix.text, suffix.expansion, [outgoingState.interpreterState.shellScope]);
-      }).join(' ') + '\n';
-  }
-};
-
 function assignVariables(name, assignments) {
   let scope = interpretingCommand(name) ?
     outgoingState.interpreterState.commandScope :
@@ -64,7 +60,12 @@ function assignVariables(name, assignments) {
 
 function executeCommand(name, suffixes) {
   if (!interpretingCommand(name)) return '';
-  return commandToFunctionMap[name.text](suffixes);
+  const commandArguments = suffixes.map((suffix) => {
+    return expandVariables(suffix.text, suffix.expansion, [outgoingState.interpreterState.shellScope]);
+  }).filter((expandedSuffix) => {
+    return expandedSuffix !== '';
+  });
+  return configuration.commandToFunctionMap[name.text](outgoingState.interpreterState.commandScope, ...commandArguments);
 }
 
 function interpretingCommand(name) {
@@ -76,7 +77,7 @@ function interpretCommand(name, prefixes, suffixes) {
   return executeCommand(name, suffixes);
 }
 
-module.exports = function bashInterpreter(incomingState) {
+function interpretScript(incomingState) {
   const parserOutput = incomingState.parserOutput;
   Object.assign(outgoingState, outgoingState, incomingState); // TODO - this is not a deep copy
 
@@ -84,4 +85,6 @@ module.exports = function bashInterpreter(incomingState) {
     outgoingState.interpreterOutput += interpretCommand(command.name, command.prefix, command.suffix);
   });
   return outgoingState;
-};
+}
+
+export {interpretScript, configuration}

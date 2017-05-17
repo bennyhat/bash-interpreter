@@ -1,10 +1,15 @@
-import bashInterpreter from "../src/bash-interpreter";
+import {interpretScript, configuration} from "../src/interpret-script";
 
-describe('BashInterpreter', () => {
+describe('interpretScript', () => {
+  let fakeCommand = jest.fn();
+
   beforeEach(() => {
+    configuration.commandToFunctionMap = {
+      'fakeCommand': fakeCommand
+    }
   });
 
-  describe('given an echo command AST in the parser output field part of the state ', () => {
+  describe('given a fake command AST in the parser output field part of the state ', () => {
     let incomingState = {
       parserOutput: {
         type: "Script",
@@ -12,7 +17,7 @@ describe('BashInterpreter', () => {
           {
             type: "Command",
             name: {
-              text: "echo",
+              text: "fakeCommand",
               type: "Word"
             },
             suffix: [
@@ -36,10 +41,10 @@ describe('BashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = bashInterpreter(incomingState);
+      newState = interpretScript(incomingState);
     });
-    it('just echos out what was in the suffix part', () => {
-      expect(newState.interpreterOutput).toEqual('a literal string\n');
+    it('calls the fake command with the parts in the suffix', () => {
+      expect(fakeCommand).toBeCalledWith({}, 'a literal string');
     });
   });
 
@@ -71,7 +76,7 @@ describe('BashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = bashInterpreter(incomingState);
+      newState = interpretScript(incomingState);
     });
     it('assigns a variable into to the interpreter state', () => {
       expect(newState.interpreterState.shellScope).toEqual({
@@ -83,7 +88,7 @@ describe('BashInterpreter', () => {
       expect(newState.interpreterOutputPrintable).toEqual(false);
     });
   });
-  describe('given a variable assignment prefix (literal) for a variable echo command', () => {
+  describe('given a variable assignment prefix (literal) for a variable fake command', () => {
     let incomingState = {
       parserOutput: {
         "type": "Script",
@@ -91,7 +96,7 @@ describe('BashInterpreter', () => {
           {
             "type": "Command",
             "name": {
-              "text": "echo",
+              "text": "fakeCommand",
               "type": "Word"
             },
             "prefix": [
@@ -149,14 +154,14 @@ describe('BashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = bashInterpreter(incomingState);
+      newState = interpretScript(incomingState);
     });
 
-    it('just echos out the expansion of what was in the shell scope (echo is weird)', () => {
-      expect(newState.interpreterOutput).toEqual('something  d\n');
+    it('calls the fake command with command scope as environment and what was in shell scope', () => {
+      expect(fakeCommand).toBeCalledWith({'a': 'b'}, 'something', 'd');
     });
   });
-  describe('given a variable expansion and concatenation in the echo command', () => {
+  describe('given a variable expansion and concatenation in the fake command command', () => {
     let incomingState = {
       parserOutput: {
         "type": "Script",
@@ -164,7 +169,7 @@ describe('BashInterpreter', () => {
           {
             "type": "Command",
             "name": {
-              "text": "echo",
+              "text": "fakeCommand",
               "type": "Word"
             },
             "suffix": [
@@ -207,11 +212,10 @@ describe('BashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = bashInterpreter(incomingState);
+      newState = interpretScript(incomingState);
     });
-
-    it('echoes out the concatenation', () => {
-      expect(newState.interpreterOutput).toEqual('dsomethinge\n');
+    it('calls the fake command with the concatenation', () => {
+      expect(fakeCommand).toBeCalledWith({}, 'dsomethinge');
     });
   });
   describe('given a variable expansion and concatenation in an assignment', () => {
@@ -261,7 +265,7 @@ describe('BashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = bashInterpreter(incomingState);
+      newState = interpretScript(incomingState);
     });
 
     it('sets the variable to the concatenation results', () => {
@@ -311,7 +315,7 @@ describe('BashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = bashInterpreter(incomingState);
+      newState = interpretScript(incomingState);
     });
 
     it('sets the first variable to the literal', () => {
