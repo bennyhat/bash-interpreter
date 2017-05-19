@@ -4,6 +4,7 @@ describe('interpretScript', () => {
   let fakeCommand = jest.fn();
 
   beforeEach(() => {
+    fakeCommand.mockClear();
     configuration.functionMaps.command = {'fakeCommand': fakeCommand}
   });
 
@@ -410,4 +411,75 @@ describe('interpretScript', () => {
       expect(fakeCommand).toBeCalledWith({'a': 'b', 'd': 'e'}, ['something']);
     });
   });
+  describe('given a variable assignment from a sub-shell containing a fake command', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "prefix": [
+              {
+                "text": "a=$(echo something)",
+                "expansion": [
+                  {
+                    "loc": {
+                      "start": 2,
+                      "end": 18
+                    },
+                    "command": "echo something",
+                    "type": "CommandExpansion",
+                    "commandAST": {
+                      "type": "Script",
+                      "commands": [
+                        {
+                          "type": "Command",
+                          "name": {
+                            "text": "fakeCommand",
+                            "type": "Word"
+                          },
+                          "suffix": [
+                            {
+                              "text": "something",
+                              "type": "Word"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                ],
+                "type": "AssignmentWord"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {
+          'a': 'b'
+        }
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      fakeCommand.mockReturnValue('something\n');
+      newState = interpretScript(incomingState);
+    });
+
+    it('assigns the output of the sub-shell into that variable in shell scope', () => {
+      expect(newState.interpreterState.shellScope).toEqual({'a': 'something'});
+    });
+
+    it('does not bleed the sub-shell state into the main shell state', () => {
+      expect(newState.parserOutput).toEqual(incomingState.parserOutput);
+    });
+  });
+  // TODO - try to split out the parameter/command expansion stuff into their own tests
+  // TODO - same with assignment and scope stuff
 });

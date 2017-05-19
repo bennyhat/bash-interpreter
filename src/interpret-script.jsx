@@ -24,16 +24,19 @@ function executeCommand(name, suffixes) {
     return expandedSuffix !== '';
   });
   let commandScope = Object.assign({}, outgoingState.interpreterState.commandScope, outgoingState.interpreterState.exportedScope);
+  let commandOutput = '';
 
-  Object.keys(configuration.functionMaps).forEach((functionType) => {
+  Object.keys(configuration.functionMaps).find((functionType) => {
     let functionMap = configuration.functionMaps[functionType];
     if (name.text in functionMap) {
       if (functionType === 'builtin') {
         commandScope = outgoingState;
       }
-      return functionMap[name.text](commandScope, commandArguments);
+      commandOutput = functionMap[name.text](commandScope, commandArguments);
+      return true;
     }
-  })
+  });
+  return commandOutput;
 }
 
 function interpretingCommand(name) {

@@ -1,3 +1,4 @@
+import { interpretScript } from '../interpret-script'
 
 function assignVariables(assignmentList = [], fromScope, toScope) {
   let assignmentMap = generateAssignmentMap(assignmentList, fromScope);
@@ -27,11 +28,16 @@ function expandVariables(originalText, expansionList = [], scopeList = []) {
     const replacementEnd = expansion.loc.end - replacementAdjustment + 1;
     const replacementLength = expansion.loc.end - expansion.loc.start;
 
-    const scope = scopeList.find((scope) => {
-        return expansionParameter in scope;
-      }) || {[expansionParameter]: ''};
-
-    const expandedText = scope[expansionParameter];
+    let expandedText = '';
+    if (expansion.type === 'ParameterExpansion') {
+      expandedText = expandParameters(scopeList, expansionParameter);
+    } else if (expansion.type === 'CommandExpansion') {
+      let subShellInputState = {
+        parserOutput: expansion.commandAST
+      };
+      let subShellOutputState = interpretScript(subShellInputState);
+      expandedText = subShellOutputState.interpreterOutput.trim();
+    }
 
     resultingText =
       resultingText.slice(0, replacementStart) +
@@ -44,4 +50,12 @@ function expandVariables(originalText, expansionList = [], scopeList = []) {
   }, originalText);
 }
 
-export { assignVariables, expandVariables }
+function expandParameters(scopeList, expansionParameter) {
+  const scope = scopeList.find((scope) => {
+      return expansionParameter in scope;
+    }) || {[expansionParameter]: ''};
+
+  return scope[expansionParameter];
+}
+
+export {assignVariables, expandVariables}
