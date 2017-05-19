@@ -4,7 +4,7 @@ describe('interpretScript', () => {
   let fakeCommand = jest.fn();
 
   beforeEach(() => {
-    configuration.commandToFunctionMap = Object.assign(configuration.commandToFunctionMap, {'fakeCommand': fakeCommand})
+    configuration.functionMaps.command = {'fakeCommand': fakeCommand}
   });
 
   describe('given a fake command AST in the parser output field part of the state ', () => {

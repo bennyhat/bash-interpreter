@@ -1,11 +1,10 @@
+import {expandVariables, assignVariables} from './helpers/variables';
+import builtinCommands from './builtins'
+
 let configuration = {
-  commandToFunctionMap: {
-    'export': (environment, parameterList) => {
-      const assignmentList = parameterList.map((parameter) => {
-        return {text: parameter};
-      });
-      assignVariables({text: 'export'}, assignmentList, outgoingState.interpreterState.exportedScope);
-    }
+  functionMaps: {
+    builtin: builtinCommands,
+    command: {}
   }
 };
 
@@ -17,54 +16,6 @@ let outgoingState = {
   }
 };
 
-function generateAssignmentMap(assignmentList = []) {
-  let assignmentMap = {};
-  assignmentList.forEach((assignment) => {
-    const expandedText = expandVariables(assignment.text, assignment.expansion, [outgoingState.interpreterState.shellScope]);
-    const splitText = expandedText.split('=');
-
-    const name = splitText[0];
-    const value = splitText[1];
-
-    assignmentMap[name] = value;
-  });
-  return assignmentMap;
-}
-
-function expandVariables(originalText, expansionList = [], scopeList = []) {
-  let replacementAdjustment = 0;
-
-  return expansionList.reduce((resultingText, expansion) => {
-    const expansionParameter = expansion.parameter;
-    const replacementStart = expansion.loc.start - replacementAdjustment;
-    const replacementEnd = expansion.loc.end - replacementAdjustment + 1;
-    const replacementLength = expansion.loc.end - expansion.loc.start;
-
-    const scope = scopeList.find((scope) => {
-        return expansionParameter in scope;
-      }) || {[expansionParameter]: ''};
-
-    const expandedText = scope[expansionParameter];
-
-    resultingText =
-      resultingText.slice(0, replacementStart) +
-      expandedText +
-      resultingText.slice(replacementEnd);
-
-    replacementAdjustment += replacementLength;
-
-    return resultingText;
-  }, originalText);
-}
-
-function assignVariables(name, assignmentList, scope = interpretingCommand(name) ?
-  outgoingState.interpreterState.commandScope :
-  outgoingState.interpreterState.shellScope) {
-
-  let assignmentMap = generateAssignmentMap(assignmentList);
-  Object.assign(scope, scope, assignmentMap);
-}
-
 function executeCommand(name, suffixes) {
   if (!interpretingCommand(name)) return '';
   const commandArguments = suffixes.map((suffix) => {
@@ -72,8 +23,17 @@ function executeCommand(name, suffixes) {
   }).filter((expandedSuffix) => {
     return expandedSuffix !== '';
   });
-  const commandScope = Object.assign({}, outgoingState.interpreterState.commandScope, outgoingState.interpreterState.exportedScope);
-  return configuration.commandToFunctionMap[name.text](commandScope, commandArguments);
+  let commandScope = Object.assign({}, outgoingState.interpreterState.commandScope, outgoingState.interpreterState.exportedScope);
+
+  Object.keys(configuration.functionMaps).forEach((functionType) => {
+    let functionMap = configuration.functionMaps[functionType];
+    if (name.text in functionMap) {
+      if (functionType === 'builtin') {
+        commandScope = outgoingState;
+      }
+      return functionMap[name.text](commandScope, commandArguments);
+    }
+  })
 }
 
 function interpretingCommand(name) {
@@ -81,7 +41,11 @@ function interpretingCommand(name) {
 }
 
 function interpretCommand(name, prefixes, suffixes) {
-  assignVariables(name, prefixes);
+  let toScope = interpretingCommand(name) ?
+    outgoingState.interpreterState.commandScope :
+    outgoingState.interpreterState.shellScope;
+
+  assignVariables(prefixes, outgoingState.interpreterState.shellScope, toScope);
   return executeCommand(name, suffixes);
 }
 
