@@ -8,6 +8,7 @@
     "babel-loader": "^6.2.4",
     "babel-preset-es2015": "^6.13.2",
     "babel-preset-react": "^6.11.1",
+    "bash-parser": "^0.4.0",
     "jest": "^20.0.0",
     "jsx-loader": "^0.13.2",
     "react": "^15.5.4",
