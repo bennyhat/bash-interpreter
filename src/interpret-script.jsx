@@ -1,4 +1,5 @@
 import {expandVariables, assignVariables} from './helpers/variables';
+import {copyAndMergeState} from './helpers/state';
 import builtinCommands from './builtins'
 
 let configuration = {
@@ -18,52 +19,71 @@ function interpretScript(incomingState) {
     interpreterOutput: ''
   };
 
+  outgoingState = copyAndMergeState(outgoingState, incomingState);
+  outgoingState.parserOutput.commands.forEach((command) => {
+    outgoingState.interpreterOutput += interpretCommand(command.name, command.prefix, command.suffix);
+  });
+
+  return outgoingState;
+
+  function interpretCommand(name, prefixes, suffixes) {
+    let fromScope = outgoingState.interpreterState.shellScope;
+    let toScope = interpretingCommand(name) ?
+      outgoingState.interpreterState.commandScope :
+      outgoingState.interpreterState.shellScope;
+    assignVariables(prefixes, fromScope, toScope);
+
+    return interpretingCommand(name) ?
+      executeCommand(name.text, suffixes) :
+      '';
+  }
+
   function executeCommand(name, suffixes) {
-    if (!interpretingCommand(name)) return '';
-    const commandArguments = suffixes.map((suffix) => {
+    const commandArguments = extractArgumentsFromSuffixes(suffixes);
+    const commandFunction = getCommandFunction(name);
+
+    return commandFunction(commandArguments);
+  }
+
+  function extractArgumentsFromSuffixes(suffixes) {
+    return suffixes.map((suffix) => {
       return expandVariables(suffix.text, suffix.expansion, [outgoingState.interpreterState.shellScope]);
     }).filter((expandedSuffix) => {
       return expandedSuffix !== '';
     });
-    let commandScope = Object.assign({}, outgoingState.interpreterState.commandScope, outgoingState.interpreterState.exportedScope);
-    let commandOutput = '';
+  }
 
-    Object.keys(configuration.functionMaps).find((functionType) => {
-      let functionMap = configuration.functionMaps[functionType];
-      if (name.text in functionMap) {
-        if (functionType === 'builtin') {
-          commandScope = outgoingState.interpreterState;
-          outgoingState.interpreterState = functionMap[name.text](commandScope, commandArguments);
-        }
-        else {
-          commandOutput = functionMap[name.text](commandScope, commandArguments);
-        }
-        return true;
+  function getCommandFunction(name) {
+    let commandType = findCommandType(name);
+    let commandFunction = findCommandFunction(commandType, name);
+
+    return function commandFunctionWrapper(argumentList) {
+      if (commandType === 'builtin') {
+        outgoingState.interpreterState = commandFunction(outgoingState.interpreterState, argumentList);
       }
+      else {
+        return commandFunction(getDefaultCommandScope(), argumentList);
+      }
+    };
+  }
+
+  function findCommandType(name) {
+    return Object.keys(configuration.functionMaps).find((functionType) => {
+      return name in configuration.functionMaps[functionType];
     });
-    return commandOutput;
+  }
+
+  function findCommandFunction(functionType, name) {
+    return configuration.functionMaps[functionType][name];
+  }
+
+  function getDefaultCommandScope() {
+    return Object.assign({}, outgoingState.interpreterState.commandScope, outgoingState.interpreterState.exportedScope)
   }
 
   function interpretingCommand(name) {
     return typeof name === 'object';
   }
-
-  function interpretCommand(name, prefixes, suffixes) {
-    let toScope = interpretingCommand(name) ?
-      outgoingState.interpreterState.commandScope :
-      outgoingState.interpreterState.shellScope;
-
-    assignVariables(prefixes, outgoingState.interpreterState.shellScope, toScope);
-    return executeCommand(name, suffixes);
-  }
-
-  const parserOutput = incomingState.parserOutput;
-  Object.assign(outgoingState, outgoingState, incomingState); // TODO - this is not a deep copy
-
-  parserOutput.commands.forEach((command) => {
-    outgoingState.interpreterOutput += interpretCommand(command.name, command.prefix, command.suffix);
-  });
-  return outgoingState;
 }
 
-export {interpretScript, configuration}
+export {interpretScript, configuration};
