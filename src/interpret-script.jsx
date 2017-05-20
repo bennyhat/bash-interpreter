@@ -1,12 +1,13 @@
 import {expandText} from './helpers/expansion';
 import {assignParameters} from './helpers/parameters';
 import {copyAndMergeState} from './helpers/state';
-import builtinCommands from './builtins'
+import builtinCommands from './builtins';
+import commands from './commands';
 
 let configuration = {
   functionMaps: {
     builtin: builtinCommands,
-    command: {}
+    command: commands
   }
 };
 
@@ -28,7 +29,7 @@ function interpretScript(incomingState) {
 
   return outgoingState;
 
-  function interpretCommand(name, prefixes, suffixes) {
+  function interpretCommand(name, prefixes = [], suffixes = []) {
     let fromScope = outgoingState.interpreterState.shellScope;
     let toScope = interpretingCommand(name) ?
       outgoingState.interpreterState.commandScope :
@@ -36,18 +37,25 @@ function interpretScript(incomingState) {
 
     assignParameters(prefixes, fromScope, toScope);
     return interpretingCommand(name) ?
-      executeCommand(name.text, suffixes) :
+      executeCommand(name, suffixes) :
       '';
   }
 
   function executeCommand(name, suffixes) {
-    const commandArguments = extractArgumentsFromSuffixes(suffixes);
-    const commandFunction = getCommandFunction(name);
+    let commandName = expandTextBlocks([name])[0];
+    let commandArguments = expandTextBlocks(suffixes);
+
+    if (commandName.includes('/')) {
+      commandArguments.unshift(commandName);
+      commandName = 'bash';
+    }
+
+    const commandFunction = getCommandFunction(commandName);
 
     return commandFunction(commandArguments);
   }
 
-  function extractArgumentsFromSuffixes(suffixes) {
+  function expandTextBlocks(suffixes) {
     return suffixes.map((suffix) => {
       return expandText(suffix.text, suffix.expansion, [outgoingState.interpreterState.shellScope]);
     }).filter((expandedSuffix) => {

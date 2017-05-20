@@ -1,6 +1,7 @@
 jest.mock('../../src/helpers/fs');
 jest.mock('bash-parser');
 jest.mock('../../src/interpret-script');
+
 import bash from '../../src/commands/bash';
 import fs from '../../src/helpers/fs';
 import bashParser from 'bash-parser';
@@ -46,7 +47,7 @@ describe('bash', () => {
       expect(output).toMatch(/^ERROR:.*?error interpreting script-file/);
     });
   });
-  describe('given an environment scope, and a script file that exists', () => {
+  describe('given an environment scope, a script file, and a list of arguments', () => {
     let environment = {
       'a': 'b'
     };
@@ -64,6 +65,14 @@ describe('bash', () => {
           "suffix": [
             {
               "text": "something",
+              "type": "Word"
+            },
+            {
+              "text": "arg1",
+              "type": "Word"
+            },
+            {
+              "text": "arg2",
               "type": "Word"
             }
           ]
@@ -86,11 +95,25 @@ describe('bash', () => {
         }
       });
 
-      output = bash(environment, ['script-file']);
+      output = bash(environment, ['script-file', 'arg1', 'arg2']);
     });
 
     it('reads from the file, then parses and interprets the contents', () => {
       expect(output).toEqual('something\n');
+    });
+
+    it('passes the environment and arguments into the interpreter as shell scope', () => {
+      expect(interpretScript).toBeCalledWith({
+        parserOutput: parsedScriptFileContents,
+        interpreterState: {
+          shellScope: {
+            'a':'b',
+            '0':'script-file',
+            '1':'arg1',
+            '2':'arg2'
+          }
+        }
+      });
     });
   });
 });

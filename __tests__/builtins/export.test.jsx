@@ -19,5 +19,12 @@ describe('builtinExport', () => {
     it('adds the variable to the exported scope', () => {
       expect(newState.exportedScope).toEqual({'a': 'b'});
     });
+    it('adds the variable to the shell scope', () => {
+      expect(newState.shellScope).toEqual({
+        'a': 'b',
+        'c': 'd',
+        'd': 'e'
+      });
+    });
   });
 });

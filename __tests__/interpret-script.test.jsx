@@ -9,15 +9,20 @@ import builtinExport from '../src/builtins/export';
 
 describe('interpretScript', () => {
   let fakeCommand = jest.fn();
+  let bash = jest.fn();
 
   beforeEach(() => {
     fakeCommand.mockClear();
+    bash.mockClear();
     assignParameters.mockClear();
     expandText.mockClear();
     builtinExport.mockClear();
     expandText.mockImplementation((text) => text);
 
-    configuration.functionMaps.command = {'fakeCommand': fakeCommand}
+    configuration.functionMaps.command = {
+      'fakeCommand': fakeCommand,
+      'bash': bash
+    };
   });
 
   describe('given a script with a fake command', () => {
@@ -221,6 +226,7 @@ describe('interpretScript', () => {
     beforeEach(() => {
       assignParameters.mockImplementation((ignoredAssignments, ignoredFromScope, toScope) => toScope['a'] = 'b');
       expandText
+        .mockReturnValueOnce('fakeCommand')
         .mockReturnValueOnce('something')
         .mockReturnValueOnce('')
         .mockReturnValueOnce('d');
@@ -327,7 +333,8 @@ describe('interpretScript', () => {
           toScope['a'] = 'asvalue'
         }
       });
-      expandText.mockReturnValue('asvalue');
+      expandText.mockReturnValueOnce('fakeCommand')
+        .mockReturnValueOnce('asvalue');
       newState = interpretScript(incomingState);
     });
 
@@ -368,7 +375,9 @@ describe('interpretScript', () => {
           toScope['a'] = 'asvalue'
         }
       });
-      expandText.mockReturnValue('asvalue');
+      expandText
+        .mockReturnValueOnce('fakeCommand')
+        .mockReturnValueOnce('asvalue');
 
       newState = interpretScript(incomingState);
       newState.parserOutput = {
@@ -404,6 +413,135 @@ describe('interpretScript', () => {
 
     it('assigns the output of the sub-shell into that parameter in shell scope', () => {
       expect(fakeCommand).toBeCalledWith({}, ['asvalue']);
+    });
+  });
+
+  describe('given a command containing a slash', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "name": {
+              "text": "./script-file",
+              "type": "Word"
+            }
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {
+          'a': 'b'
+        }
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = interpretScript(incomingState);
+    });
+
+    it('runs that file through the bash command', () => {
+      expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file']);
+    });
+  });
+  describe('given a command containing a slash and arguments', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "name": {
+              "text": "./script-file",
+              "type": "Word"
+            },
+            "suffix": [
+              {
+                "text": "something",
+                "type": "Word"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {
+          'a': 'b'
+        }
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = interpretScript(incomingState);
+    });
+
+    it('runs that file through the bash command and passes it that argument', () => {
+      expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file', 'something']);
+    });
+  });
+  describe('given a command containing a slash that comes from expansion', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "name": {
+              "text": "${script_var}",
+              "expansion": [
+                {
+                  "loc": {
+                    "start": 0,
+                    "end": 12
+                  },
+                  "parameter": "script_var",
+                  "type": "ParameterExpansion"
+                }
+              ],
+              "type": "Word"
+            },
+            "suffix": [
+              {
+                "text": "something",
+                "type": "Word"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {
+          'script_var': './script-file'
+        },
+        commandScope: {},
+        exportedScope: {
+          'a': 'b'
+        }
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      expandText.mockReturnValueOnce('./script-file')
+        .mockReturnValueOnce('something');
+      newState = interpretScript(incomingState);
+    });
+
+    it('runs that file through the bash command and passes it that argument', () => {
+      expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file', 'something']);
     });
   });
 });

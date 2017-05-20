@@ -11,5 +11,10 @@ export default function builtinExport(incomingState, parameterList) {
     outgoingState.shellScope,
     outgoingState.exportedScope
   );
+  assignParameters(
+    assignmentList,
+    outgoingState.shellScope,
+    outgoingState.shellScope
+  );
   return outgoingState;
 }
