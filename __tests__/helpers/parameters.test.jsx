@@ -1,9 +1,6 @@
-import {assignParameters, expandParameters} from '../../src/helpers/parameters';
+import {assignParameters, expandParameter} from '../../src/helpers/parameters';
 
-jest.mock('../../src/interpret-script.jsx');
-import {interpretScript} from '../../src/interpret-script.jsx';
-
-describe('variables', () => {
+describe('parameters', () => {
   describe('#assignParameters() given list of simple assignments and from and to scopes', () => {
     let assignmentList = [
       {
@@ -119,83 +116,27 @@ describe('variables', () => {
     });
   });
 
-  describe('#expandParameters() given text with replaceable tokens, a parameter expansion list and a from scope', () => {
-    const replaceableText = '${c}something$d';
-    const expansionList = [
+  describe('#expandParameter() given a scope list and a parameter name', () => {
+
+    const scopeList = [
       {
-        "loc": {
-          "start": 0,
-          "end": 3
-        },
-        "parameter": "c",
-        "type": "ParameterExpansion"
+        'c': 'g',
+        'd': 'h'
       },
       {
-        "loc": {
-          "start": 13,
-          "end": 14
-        },
-        "parameter": "d",
-        "type": "ParameterExpansion"
+        'c': 'd'
       }
     ];
-    const fromScopeList = [{
-      'c': 'g',
-      'd': 'h'
-    }];
-    let replacedText = '';
+    const parameterName = 'c';
+
+    let expandedParameter = '';
 
     beforeEach(() => {
-      replacedText = expandParameters(replaceableText, expansionList, fromScopeList);
+      expandedParameter = expandParameter(scopeList, parameterName);
     });
 
-    it('adds the variable to the to scope', () => {
-      expect(replacedText).toEqual('gsomethingh');
-    });
-  });
-  describe('#expandParameters() given text with replaceable tokens, a command expansion list and a from scope', () => {
-    const replaceableText = 'a$(fakeCommand something)b';
-    const expansionList = [
-      {
-        "loc": {
-          "start": 1,
-          "end": 24
-        },
-        "command": "fakeCommand something",
-        "type": "CommandExpansion",
-        "commandAST": {
-          "type": "Script",
-          "commands": [
-            {
-              "type": "Command",
-              "name": {
-                "text": "fakeCommand",
-                "type": "Word"
-              },
-              "suffix": [
-                {
-                  "text": "something",
-                  "type": "Word"
-                }
-              ]
-            }
-          ]
-        }
-      }
-    ];
-    const fromScopeList = [{
-      'c': 'g',
-    }];
-    let replacedText = '';
-
-    beforeEach(() => {
-      interpretScript.mockClear();
-      interpretScript.mockReturnValue({interpreterOutput: 'something'});
-      replacedText = expandParameters(replaceableText, expansionList, fromScopeList);
-    });
-
-    it('adds the variable to the to scope', () => {
-      expect(replacedText).toEqual('asomethingb');
+    it('returns the first parameter value it finds', () => {
+      expect(expandedParameter).toEqual('g');
     });
   });
 });

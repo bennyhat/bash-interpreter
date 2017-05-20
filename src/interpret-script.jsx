@@ -1,4 +1,5 @@
-import {expandParameters, assignParameters} from './helpers/parameters';
+import {expandText} from './helpers/expansion';
+import {assignParameters} from './helpers/parameters';
 import {copyAndMergeState} from './helpers/state';
 import builtinCommands from './builtins'
 
@@ -32,8 +33,8 @@ function interpretScript(incomingState) {
     let toScope = interpretingCommand(name) ?
       outgoingState.interpreterState.commandScope :
       outgoingState.interpreterState.shellScope;
-    assignParameters(prefixes, fromScope, toScope);
 
+    assignParameters(prefixes, fromScope, toScope);
     return interpretingCommand(name) ?
       executeCommand(name.text, suffixes) :
       '';
@@ -48,7 +49,7 @@ function interpretScript(incomingState) {
 
   function extractArgumentsFromSuffixes(suffixes) {
     return suffixes.map((suffix) => {
-      return expandParameters(suffix.text, suffix.expansion, [outgoingState.interpreterState.shellScope]);
+      return expandText(suffix.text, suffix.expansion, [outgoingState.interpreterState.shellScope]);
     }).filter((expandedSuffix) => {
       return expandedSuffix !== '';
     });

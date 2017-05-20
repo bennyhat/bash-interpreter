@@ -1,7 +1,10 @@
 jest.mock('../src/helpers/parameters');
+jest.mock('../src/helpers/expansion');
 jest.mock('../src/builtins/export');
+
 import {interpretScript, configuration} from "../src/interpret-script";
-import {assignParameters, expandParameters} from '../src/helpers/parameters'
+import {assignParameters} from '../src/helpers/parameters';
+import {expandText} from '../src/helpers/expansion';
 import builtinExport from '../src/builtins/export';
 
 describe('interpretScript', () => {
@@ -10,9 +13,9 @@ describe('interpretScript', () => {
   beforeEach(() => {
     fakeCommand.mockClear();
     assignParameters.mockClear();
-    expandParameters.mockClear();
+    expandText.mockClear();
     builtinExport.mockClear();
-    expandParameters.mockImplementation((text) => text);
+    expandText.mockImplementation((text) => text);
 
     configuration.functionMaps.command = {'fakeCommand': fakeCommand}
   });
@@ -55,7 +58,7 @@ describe('interpretScript', () => {
       newState = interpretScript(incomingState);
     });
     it('calls the expand parameters function for the parameter text, even with no expansions', () => {
-      expect(expandParameters).toBeCalledWith('a literal string', undefined, [incomingState.interpreterState.shellScope]);
+      expect(expandText).toBeCalledWith('a literal string', undefined, [incomingState.interpreterState.shellScope]);
     });
     it('calls the fake command with the parts in the suffix', () => {
       expect(fakeCommand).toBeCalledWith(incomingState.interpreterState.exportedScope, ['a literal string']);
@@ -217,7 +220,7 @@ describe('interpretScript', () => {
 
     beforeEach(() => {
       assignParameters.mockImplementation((ignoredAssignments, ignoredFromScope, toScope) => toScope['a'] = 'b');
-      expandParameters
+      expandText
         .mockReturnValueOnce('something')
         .mockReturnValueOnce('')
         .mockReturnValueOnce('d');
@@ -324,7 +327,7 @@ describe('interpretScript', () => {
           toScope['a'] = 'asvalue'
         }
       });
-      expandParameters.mockReturnValue('asvalue');
+      expandText.mockReturnValue('asvalue');
       newState = interpretScript(incomingState);
     });
 
@@ -365,7 +368,7 @@ describe('interpretScript', () => {
           toScope['a'] = 'asvalue'
         }
       });
-      expandParameters.mockReturnValue('asvalue');
+      expandText.mockReturnValue('asvalue');
 
       newState = interpretScript(incomingState);
       newState.parserOutput = {
