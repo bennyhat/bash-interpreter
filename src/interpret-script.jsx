@@ -1,4 +1,4 @@
-import {expandVariables, assignVariables} from './helpers/variables';
+import {expandParameters, assignParameters} from './helpers/parameters';
 import {copyAndMergeState} from './helpers/state';
 import builtinCommands from './builtins'
 
@@ -16,7 +16,8 @@ function interpretScript(incomingState) {
       commandScope: {},
       exportedScope: {}
     },
-    interpreterOutput: ''
+    interpreterOutput: '',
+    interpreterOutputPrintable: false
   };
 
   outgoingState = copyAndMergeState(outgoingState, incomingState);
@@ -31,7 +32,7 @@ function interpretScript(incomingState) {
     let toScope = interpretingCommand(name) ?
       outgoingState.interpreterState.commandScope :
       outgoingState.interpreterState.shellScope;
-    assignVariables(prefixes, fromScope, toScope);
+    assignParameters(prefixes, fromScope, toScope);
 
     return interpretingCommand(name) ?
       executeCommand(name.text, suffixes) :
@@ -47,7 +48,7 @@ function interpretScript(incomingState) {
 
   function extractArgumentsFromSuffixes(suffixes) {
     return suffixes.map((suffix) => {
-      return expandVariables(suffix.text, suffix.expansion, [outgoingState.interpreterState.shellScope]);
+      return expandParameters(suffix.text, suffix.expansion, [outgoingState.interpreterState.shellScope]);
     }).filter((expandedSuffix) => {
       return expandedSuffix !== '';
     });
@@ -62,6 +63,7 @@ function interpretScript(incomingState) {
         outgoingState.interpreterState = commandFunction(outgoingState.interpreterState, argumentList);
       }
       else {
+        outgoingState.interpreterOutputPrintable = true;
         return commandFunction(getDefaultCommandScope(), argumentList);
       }
     };
@@ -78,7 +80,9 @@ function interpretScript(incomingState) {
   }
 
   function getDefaultCommandScope() {
-    return Object.assign({}, outgoingState.interpreterState.commandScope, outgoingState.interpreterState.exportedScope)
+    return Object.assign({},
+      outgoingState.interpreterState.commandScope,
+      outgoingState.interpreterState.exportedScope)
   }
 
   function interpretingCommand(name) {

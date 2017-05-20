@@ -1,4 +1,4 @@
-import {assignVariables} from '../helpers/variables';
+import {assignParameters} from '../helpers/parameters';
 import {copyAndMergeState} from '../helpers/state';
 
 export default function builtinExport(incomingState, parameterList) {
@@ -6,7 +6,7 @@ export default function builtinExport(incomingState, parameterList) {
   const assignmentList = parameterList.map((parameter) => {
     return {text: parameter};
   });
-  assignVariables(
+  assignParameters(
     assignmentList,
     outgoingState.shellScope,
     outgoingState.exportedScope

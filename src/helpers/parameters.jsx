@@ -1,25 +1,26 @@
-import { interpretScript } from '../interpret-script'
+import {interpretScript} from '../interpret-script'
+import {copyAndMergeState} from './state'
 
-function assignVariables(assignmentList = [], fromScope, toScope) {
-  let assignmentMap = generateAssignmentMap(assignmentList, fromScope);
-  Object.assign(toScope, toScope, assignmentMap);
-}
+function assignParameters(assignmentList = [], fromScope, toScope) {
+  let referenceScope = copyAndMergeState(fromScope);
 
-function generateAssignmentMap(assignmentList = [], scope) {
-  let assignmentMap = {};
   assignmentList.forEach((assignment) => {
-    const expandedText = expandVariables(assignment.text, assignment.expansion, [scope]);
+    const expandedText = expandParameters(
+      assignment.text,
+      assignment.expansion,
+      [referenceScope]
+    );
     const splitText = expandedText.split('=');
 
     const name = splitText[0];
     const value = splitText[1];
 
-    assignmentMap[name] = value;
+    Object.assign(referenceScope, referenceScope, {[name]: value});
+    Object.assign(toScope, toScope, {[name]: value});
   });
-  return assignmentMap;
 }
 
-function expandVariables(originalText, expansionList = [], scopeList = []) {
+function expandParameters(originalText, expansionList = [], scopeList = []) {
   let replacementAdjustment = 0;
 
   return expansionList.reduce((resultingText, expansion) => {
@@ -30,7 +31,7 @@ function expandVariables(originalText, expansionList = [], scopeList = []) {
 
     let expandedText = '';
     if (expansion.type === 'ParameterExpansion') {
-      expandedText = expandParameters(scopeList, expansionParameter);
+      expandedText = expandParameter(scopeList, expansionParameter);
     } else if (expansion.type === 'CommandExpansion') {
       let subShellInputState = {
         parserOutput: expansion.commandAST
@@ -50,7 +51,7 @@ function expandVariables(originalText, expansionList = [], scopeList = []) {
   }, originalText);
 }
 
-function expandParameters(scopeList, expansionParameter) {
+function expandParameter(scopeList, expansionParameter) {
   const scope = scopeList.find((scope) => {
       return expansionParameter in scope;
     }) || {[expansionParameter]: ''};
@@ -58,4 +59,4 @@ function expandParameters(scopeList, expansionParameter) {
   return scope[expansionParameter];
 }
 
-export {assignVariables, expandVariables}
+export {assignParameters, expandParameters}
