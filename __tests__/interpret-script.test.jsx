@@ -1,14 +1,23 @@
+jest.mock('../src/helpers/parameters');
+jest.mock('../src/builtins/export');
 import {interpretScript, configuration} from "../src/interpret-script";
+import {assignParameters, expandParameters} from '../src/helpers/parameters'
+import builtinExport from '../src/builtins/export';
 
 describe('interpretScript', () => {
   let fakeCommand = jest.fn();
 
   beforeEach(() => {
     fakeCommand.mockClear();
+    assignParameters.mockClear();
+    expandParameters.mockClear();
+    builtinExport.mockClear();
+    expandParameters.mockImplementation((text) => text);
+
     configuration.functionMaps.command = {'fakeCommand': fakeCommand}
   });
 
-  describe('given a fake command AST in the parser output field part of the state ', () => {
+  describe('given a script with a fake command', () => {
     let incomingState = {
       parserOutput: {
         type: "Script",
@@ -34,7 +43,10 @@ describe('interpretScript', () => {
         shellScope: {
           'c': 'd'
         },
-        commandScope: {}
+        commandScope: {},
+        exportedScope: {
+          'y': 'z'
+        }
       }
     };
     let newState = {};
@@ -42,13 +54,15 @@ describe('interpretScript', () => {
     beforeEach(() => {
       newState = interpretScript(incomingState);
     });
+    it('calls the expand parameters function for the parameter text, even with no expansions', () => {
+      expect(expandParameters).toBeCalledWith('a literal string', undefined, [incomingState.interpreterState.shellScope]);
+    });
     it('calls the fake command with the parts in the suffix', () => {
-      expect(fakeCommand).toBeCalledWith({}, ['a literal string']);
+      expect(fakeCommand).toBeCalledWith(incomingState.interpreterState.exportedScope, ['a literal string']);
     });
   });
 
-  // TODO - moved
-  describe('given a literal parameter assignment command AST in the parser output field part of the state', () => {
+  describe('given a script with an assignment', () => {
     let incomingState = {
       parserOutput: {
         "type": "Script",
@@ -78,19 +92,65 @@ describe('interpretScript', () => {
     beforeEach(() => {
       newState = interpretScript(incomingState);
     });
-    it('assigns a parameter into to the interpreter state', () => {
-      expect(newState.interpreterState.shellScope).toEqual({
-        'a': 'b',
-        'c': 'd'
-      });
+    it('uses the parameters module assignParameters function to do the assignment into command scope', () => {
+      expect(assignParameters).toBeCalledWith(
+        incomingState.parserOutput.commands[0].prefix,
+        incomingState.interpreterState.shellScope,
+        incomingState.interpreterState.shellScope);
     });
-    it('marks the interpreter output as non-printable', () => {
-      expect(newState.interpreterOutputPrintable).toEqual(false);
+  });
+  describe('given a script with an assignment and command', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "name": {
+              "text": "fakeCommand",
+              "type": "Word"
+            },
+            "prefix": [
+              {
+                "text": "a=b",
+                "type": "AssignmentWord"
+              }
+            ],
+            "suffix": [
+              {
+                "text": "something",
+                "type": "Word"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {
+          'c': 'd'
+        },
+        commandScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = interpretScript(incomingState);
+    });
+    it('uses the parameters module assignParameters function to do the assignment into command scope', () => {
+      expect(assignParameters).toBeCalledWith(
+        incomingState.parserOutput.commands[0].prefix,
+        incomingState.interpreterState.shellScope,
+        incomingState.interpreterState.commandScope);
+    });
+    it('calls the fake command with whatever was expanded from the suffix', () => {
+      expect(fakeCommand).toBeCalledWith({}, ['something']);
     });
   });
 
-  // TODO - moved
-  describe('given a parameter assignment prefix (literal) for a parameter fake command', () => {
+  describe('given a script with an assignment and command with parameter expansion', () => {
     let incomingState = {
       parserOutput: {
         "type": "Script",
@@ -156,190 +216,21 @@ describe('interpretScript', () => {
     let newState = {};
 
     beforeEach(() => {
+      assignParameters.mockImplementation((ignoredAssignments, ignoredFromScope, toScope) => toScope['a'] = 'b');
+      expandParameters
+        .mockReturnValueOnce('something')
+        .mockReturnValueOnce('')
+        .mockReturnValueOnce('d');
+
       newState = interpretScript(incomingState);
     });
 
-    it('calls the fake command with command scope as environment and what was in shell scope', () => {
+    it('calls the fake command with correct outcomes for assignment and extraction', () => {
       expect(fakeCommand).toBeCalledWith({'a': 'b'}, ['something', 'd']);
     });
   });
-  // TODO - moved
-  describe('given a parameter expansion and concatenation in the fake command command', () => {
-    let incomingState = {
-      parserOutput: {
-        "type": "Script",
-        "commands": [
-          {
-            "type": "Command",
-            "name": {
-              "text": "fakeCommand",
-              "type": "Word"
-            },
-            "suffix": [
-              {
-                "text": "${c}something$d",
-                "expansion": [
-                  {
-                    "loc": {
-                      "start": 0,
-                      "end": 3
-                    },
-                    "parameter": "c",
-                    "type": "ParameterExpansion"
-                  },
-                  {
-                    "loc": {
-                      "start": 13,
-                      "end": 14
-                    },
-                    "parameter": "d",
-                    "type": "ParameterExpansion"
-                  }
-                ],
-                "type": "Word"
-              }
-            ]
-          }
-        ]
-      },
-      interpreterOutput: '',
-      interpreterOutputPrintable: false,
-      interpreterState: {
-        shellScope: {
-          'c': 'd',
-          'd': 'e'
-        },
-        commandScope: {}
-      }
-    };
-    let newState = {};
 
-    beforeEach(() => {
-      fakeCommand.mockReturnValue('dsomethinge\n');
-      newState = interpretScript(incomingState);
-    });
-    it('calls the fake command with the concatenation', () => {
-      expect(fakeCommand).toBeCalledWith({}, ['dsomethinge']);
-    });
-    it('sets the interpreter output', () => {
-      expect(newState.interpreterOutput).toEqual('dsomethinge\n');
-    });
-    it('sets the interpreter output to printable', () => {
-      expect(newState.interpreterOutputPrintable).toEqual(true);
-    });
-  });
-  // TODO - moved
-  describe('given a parameter expansion and concatenation in an assignment', () => {
-    let incomingState = {
-      parserOutput: {
-        "type": "Script",
-        "commands": [
-          {
-            "type": "Command",
-            "prefix": [
-              {
-                "text": "a=${c}something$d",
-                "expansion": [
-                  {
-                    "loc": {
-                      "start": 2,
-                      "end": 5
-                    },
-                    "parameter": "c",
-                    "type": "ParameterExpansion"
-                  },
-                  {
-                    "loc": {
-                      "start": 15,
-                      "end": 16
-                    },
-                    "parameter": "d",
-                    "type": "ParameterExpansion"
-                  }
-                ],
-                "type": "AssignmentWord"
-              }
-            ]
-          }
-        ]
-      },
-      interpreterOutput: '',
-      interpreterOutputPrintable: false,
-      interpreterState: {
-        shellScope: {
-          'c': 'd',
-          'd': 'e'
-        },
-        commandScope: {}
-      }
-    };
-    let newState = {};
-
-    beforeEach(() => {
-      newState = interpretScript(incomingState);
-    });
-
-    it('sets the parameter to the concatenation results', () => {
-      expect(newState.interpreterState.shellScope.a).toEqual('dsomethinge');
-    });
-  });
-  // TODO - moved
-  describe('given a parameter expansion in multiple assignments', () => {
-    let incomingState = {
-      parserOutput: {
-        "type": "Script",
-        "commands": [
-          {
-            "type": "Command",
-            "prefix": [
-              {
-                "text": "a=something",
-                "type": "AssignmentWord"
-              },
-              {
-                "text": "b=$a",
-                "expansion": [
-                  {
-                    "loc": {
-                      "start": 2,
-                      "end": 3
-                    },
-                    "parameter": "a",
-                    "type": "ParameterExpansion"
-                  }
-                ],
-                "type": "AssignmentWord"
-              }
-            ]
-          }
-        ]
-      },
-      interpreterOutput: '',
-      interpreterOutputPrintable: false,
-      interpreterState: {
-        shellScope: {
-          'c': 'd',
-          'd': 'e'
-        },
-        commandScope: {}
-      }
-    };
-    let newState = {};
-
-    beforeEach(() => {
-      newState = interpretScript(incomingState);
-    });
-
-    it('sets the first parameter to the literal', () => {
-      expect(newState.interpreterState.shellScope).toEqual({
-        'a': 'something',
-        'b': 'something',
-        'c': 'd',
-        'd': 'e'
-      });
-    });
-  });
-  describe('given a parameter export assignment', () => {
+  describe('given a script with a parameter export assignment', () => {
     let incomingState = {
       parserOutput: {
         "type": "Script",
@@ -373,124 +264,8 @@ describe('interpretScript', () => {
       newState = interpretScript(incomingState);
     });
 
-    it('calls the fake command with the combination of the command and exported scopes', () => {
-      expect(newState.interpreterState.exportedScope).toEqual({'a': 'b'});
-    });
-  });
-  describe('given a parameter export and a fake command call', () => {
-    let incomingState = {
-      parserOutput: {
-        "type": "Script",
-        "commands": [
-          {
-            "type": "Command",
-            "name": {
-              "text": "fakeCommand",
-              "type": "Word"
-            },
-            "prefix": [
-              {
-                "text": "d=e",
-                "type": "AssignmentWord"
-              }
-            ],
-            "suffix": [
-              {
-                "text": "something",
-                "type": "Word"
-              }
-            ]
-          }
-        ]
-      },
-      interpreterOutput: '',
-      interpreterOutputPrintable: false,
-      interpreterState: {
-        shellScope: {},
-        commandScope: {},
-        exportedScope: {
-          'a': 'b'
-        }
-      }
-    };
-    let newState = {};
-
-    beforeEach(() => {
-      newState = interpretScript(incomingState);
-    });
-
-    it('calls the fake command with the combination of the command and exported scopes', () => {
-      expect(fakeCommand).toBeCalledWith({'a': 'b', 'd': 'e'}, ['something']);
-    });
-  });
-  // TODO - moved
-  describe('given a parameter assignment from a sub-shell containing a fake command', () => {
-    let incomingState = {
-      parserOutput: {
-        "type": "Script",
-        "commands": [
-          {
-            "type": "Command",
-            "prefix": [
-              {
-                "text": "a=$(echo something)",
-                "expansion": [
-                  {
-                    "loc": {
-                      "start": 2,
-                      "end": 18
-                    },
-                    "command": "echo something",
-                    "type": "CommandExpansion",
-                    "commandAST": {
-                      "type": "Script",
-                      "commands": [
-                        {
-                          "type": "Command",
-                          "name": {
-                            "text": "fakeCommand",
-                            "type": "Word"
-                          },
-                          "suffix": [
-                            {
-                              "text": "something",
-                              "type": "Word"
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  }
-                ],
-                "type": "AssignmentWord"
-              }
-            ]
-          }
-        ]
-      },
-      interpreterOutput: '',
-      interpreterOutputPrintable: false,
-      interpreterState: {
-        shellScope: {},
-        commandScope: {},
-        exportedScope: {
-          'a': 'b'
-        }
-      }
-    };
-    let newState = {};
-
-    beforeEach(() => {
-      fakeCommand.mockReturnValue('something\n');
-      newState = interpretScript(incomingState);
-    });
-
-    it('assigns the output of the sub-shell into that parameter in shell scope', () => {
-      expect(newState.interpreterState.shellScope).toEqual({'a': 'something'});
-    });
-
-    it('does not bleed the sub-shell state into the main shell state', () => {
-      expect(newState.parserOutput).toEqual(incomingState.parserOutput);
+    it('calls the export command with the current interpreter state', () => {
+      expect(builtinExport).toBeCalledWith(incomingState.interpreterState, ['a=b'])
     });
   });
 
@@ -544,7 +319,12 @@ describe('interpretScript', () => {
     let newState = {};
 
     beforeEach(() => {
-      fakeCommand.mockReturnValue('something\n');
+      assignParameters.mockImplementation((assignmentList = [], ignoredFromScope, toScope) => {
+        if (assignmentList.length > 0) {
+          toScope['a'] = 'asvalue'
+        }
+      });
+      expandParameters.mockReturnValue('asvalue');
       newState = interpretScript(incomingState);
     });
 
@@ -552,7 +332,7 @@ describe('interpretScript', () => {
       expect(fakeCommand).toBeCalledWith({}, ['asvalue']);
     });
   });
-  describe('given consecutive commands (two interpreter calls), those commands can share state', () => {
+  describe('given consecutive scripts, those scripts can share state', () => {
     let incomingState = {
       parserOutput: {
         "type": "Script",
@@ -580,6 +360,13 @@ describe('interpretScript', () => {
 
     beforeEach(() => {
       fakeCommand.mockReturnValue('something\n');
+      assignParameters.mockImplementation((assignmentList = [], ignoredFromScope, toScope) => {
+        if (assignmentList.length > 0) {
+          toScope['a'] = 'asvalue'
+        }
+      });
+      expandParameters.mockReturnValue('asvalue');
+
       newState = interpretScript(incomingState);
       newState.parserOutput = {
         "type": "Script",
