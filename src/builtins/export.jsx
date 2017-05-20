@@ -7,8 +7,8 @@ export default function builtinExport(incomingState, parameterList) {
   });
   assignVariables(
     assignmentList,
-    outgoingState.interpreterState.shellScope,
-    outgoingState.interpreterState.exportedScope
+    outgoingState.shellScope,
+    outgoingState.exportedScope
   );
   return outgoingState;
 }

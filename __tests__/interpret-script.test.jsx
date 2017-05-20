@@ -324,47 +324,6 @@ describe('interpretScript', () => {
       expect(newState.interpreterState.shellScope.b).toEqual('something');
     });
   });
-  describe('given a variable export', () => {
-    let incomingState = {
-      parserOutput: {
-        "type": "Script",
-        "commands": [
-          {
-            "type": "Command",
-            "name": {
-              "text": "export",
-              "type": "Word"
-            },
-            "suffix": [
-              {
-                "text": "a=b",
-                "type": "Word"
-              }
-            ]
-          }
-        ]
-      },
-      interpreterOutput: '',
-      interpreterOutputPrintable: false,
-      interpreterState: {
-        shellScope: {
-          'c': 'd',
-          'd': 'e'
-        },
-        commandScope: {},
-        exportedScope: {}
-      }
-    };
-    let newState = {};
-
-    beforeEach(() => {
-      newState = interpretScript(incomingState);
-    });
-
-    it('adds the variable to the exported scope', () => {
-      expect(newState.interpreterState.exportedScope).toEqual({'a': 'b'});
-    });
-  });
   describe('given a variable export and a fake command call', () => {
     let incomingState = {
       parserOutput: {
