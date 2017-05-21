@@ -11,7 +11,7 @@ let configuration = {
   }
 };
 
-function interpretScript(incomingState) {
+function bashInterpreter(incomingState) {
   let outgoingState = {
     interpreterState: {
       shellScope: {},
@@ -99,4 +99,5 @@ function interpretScript(incomingState) {
   }
 }
 
-export {interpretScript, configuration};
+export {bashInterpreter, configuration};
+export default bashInterpreter;

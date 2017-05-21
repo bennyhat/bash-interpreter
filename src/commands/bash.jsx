@@ -1,6 +1,6 @@
 import fs from '../helpers/fs'
 import bashParser from 'bash-parser';
-import {interpretScript} from '../interpret-script';
+import bashInterpreter from '../bash-interpreter';
 import {copyAndMergeState} from '../helpers/state';
 
 function generateParameterState(parameterList) {
@@ -23,7 +23,7 @@ export default function bash(environment, parameterList = []) {
         shellScope: copyAndMergeState(environment, parameterState)
       }
     };
-    let interpreterOutput = interpretScript(incomingState);
+    let interpreterOutput = bashInterpreter(incomingState);
     return interpreterOutput.interpreterOutput;
   }
   catch (exception) {

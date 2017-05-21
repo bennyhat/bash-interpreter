@@ -2,12 +2,12 @@ jest.mock('../src/helpers/parameters');
 jest.mock('../src/helpers/expansion');
 jest.mock('../src/builtins/export');
 
-import {interpretScript, configuration} from "../src/interpret-script";
+import {bashInterpreter, configuration} from "../src/bash-interpreter";
 import {assignParameters} from '../src/helpers/parameters';
 import {expandText} from '../src/helpers/expansion';
 import builtinExport from '../src/builtins/export';
 
-describe('interpretScript', () => {
+describe('bashInterpreter', () => {
   let fakeCommand = jest.fn();
   let bash = jest.fn();
 
@@ -60,7 +60,7 @@ describe('interpretScript', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
     });
     it('calls the expand parameters function for the parameter text, even with no expansions', () => {
       expect(expandText).toBeCalledWith('a literal string', undefined, [incomingState.interpreterState.shellScope]);
@@ -98,7 +98,7 @@ describe('interpretScript', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
     });
     it('uses the parameters module assignParameters function to do the assignment into command scope', () => {
       expect(assignParameters).toBeCalledWith(
@@ -145,7 +145,7 @@ describe('interpretScript', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
     });
     it('uses the parameters module assignParameters function to do the assignment into command scope', () => {
       expect(assignParameters).toBeCalledWith(
@@ -231,7 +231,7 @@ describe('interpretScript', () => {
         .mockReturnValueOnce('')
         .mockReturnValueOnce('d');
 
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
     });
 
     it('calls the fake command with correct outcomes for assignment and extraction', () => {
@@ -270,7 +270,7 @@ describe('interpretScript', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
     });
 
     it('calls the export command with the current interpreter state', () => {
@@ -335,7 +335,7 @@ describe('interpretScript', () => {
       });
       expandText.mockReturnValueOnce('fakeCommand')
         .mockReturnValueOnce('asvalue');
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
     });
 
     it('assigns the output of the sub-shell into that parameter in shell scope', () => {
@@ -379,7 +379,7 @@ describe('interpretScript', () => {
         .mockReturnValueOnce('fakeCommand')
         .mockReturnValueOnce('asvalue');
 
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
       newState.parserOutput = {
         "type": "Script",
         "commands": [
@@ -408,7 +408,7 @@ describe('interpretScript', () => {
           }
         ]
       };
-      interpretScript(newState);
+      bashInterpreter(newState);
     });
 
     it('assigns the output of the sub-shell into that parameter in shell scope', () => {
@@ -443,7 +443,7 @@ describe('interpretScript', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
     });
 
     it('runs that file through the bash command', () => {
@@ -483,7 +483,7 @@ describe('interpretScript', () => {
     let newState = {};
 
     beforeEach(() => {
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
     });
 
     it('runs that file through the bash command and passes it that argument', () => {
@@ -537,7 +537,7 @@ describe('interpretScript', () => {
     beforeEach(() => {
       expandText.mockReturnValueOnce('./script-file')
         .mockReturnValueOnce('something');
-      newState = interpretScript(incomingState);
+      newState = bashInterpreter(incomingState);
     });
 
     it('runs that file through the bash command and passes it that argument', () => {

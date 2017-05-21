@@ -1,7 +1,7 @@
 import {expandText} from '../../src/helpers/expansion';
 
-jest.mock('../../src/interpret-script.jsx');
-import {interpretScript} from '../../src/interpret-script.jsx';
+jest.mock('../../src/bash-interpreter');
+import bashInterpreter from '../../src/bash-interpreter.jsx';
 
 // TODO - stub the underlying expanders and add unit tests to commands helper
 describe('expansion', () => {
@@ -75,8 +75,8 @@ describe('expansion', () => {
     let replacedText = '';
 
     beforeEach(() => {
-      interpretScript.mockClear();
-      interpretScript.mockReturnValue({interpreterOutput: 'something'});
+      bashInterpreter.mockClear();
+      bashInterpreter.mockReturnValue({interpreterOutput: 'something'});
       replacedText = expandText(replaceableText, expansionList, fromScopeList);
     });
 

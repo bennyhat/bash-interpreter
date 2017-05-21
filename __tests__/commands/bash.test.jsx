@@ -1,11 +1,11 @@
 jest.mock('../../src/helpers/fs');
 jest.mock('bash-parser');
-jest.mock('../../src/interpret-script');
+jest.mock('../../src/bash-interpreter');
 
 import bash from '../../src/commands/bash';
 import fs from '../../src/helpers/fs';
 import bashParser from 'bash-parser';
-import {interpretScript} from '../../src/interpret-script';
+import bashInterpreter from '../../src/bash-interpreter';
 
 describe('bash', () => {
   let fakeCommand = jest.fn();
@@ -13,7 +13,7 @@ describe('bash', () => {
   beforeEach(() => {
     fs.readFileSync.mockClear();
     bashParser.mockClear();
-    interpretScript.mockClear();
+    bashInterpreter.mockClear();
     fakeCommand.mockClear();
   });
   describe('given an environment scope, and no arguments', () => {
@@ -89,7 +89,7 @@ describe('bash', () => {
           return parsedScriptFileContents;
         }
       });
-      interpretScript.mockImplementation((incomingState) => {
+      bashInterpreter.mockImplementation((incomingState) => {
         if (incomingState.parserOutput === parsedScriptFileContents) {
           return {interpreterOutput: 'something\n'};
         }
@@ -103,7 +103,7 @@ describe('bash', () => {
     });
 
     it('passes the environment and arguments into the interpreter as shell scope', () => {
-      expect(interpretScript).toBeCalledWith({
+      expect(bashInterpreter).toBeCalledWith({
         parserOutput: parsedScriptFileContents,
         interpreterState: {
           shellScope: {
