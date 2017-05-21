@@ -22,14 +22,40 @@ function bashInterpreter(incomingState) {
     interpreterOutputPrintable: false
   };
 
+  let commandTypeMap = {
+    Command: interpretCommand,
+    LogicalExpression: interpretLogicalExpression
+  };
+
   outgoingState = copyAndMergeState(outgoingState, incomingState);
   outgoingState.parserOutput.commands.forEach((command) => {
-    outgoingState.interpreterOutput += interpretCommand(command.name, command.prefix, command.suffix);
+    const commandOutput = commandTypeMap[command.type](command);
+    outgoingState.interpreterOutput += commandOutput.stdout + commandOutput.stderr;
   });
 
   return outgoingState;
 
-  function interpretCommand(name, prefixes = [], suffixes = []) {
+  function interpretLogicalExpression(expression) {
+    let leftCommand = expression.left;
+    let rightCommand = expression.right;
+    let operation = expression.op;
+
+    let leftCommandOutput = commandTypeMap[leftCommand.type](leftCommand);
+    if (leftCommandOutput.exitCode !== 0 && operation === 'and') return leftCommandOutput;
+    let rightCommandOutput = commandTypeMap[rightCommand.type](rightCommand);
+
+    return {
+      stdout: leftCommandOutput.stdout + rightCommandOutput.stdout,
+      stderr: leftCommandOutput.stderr + rightCommandOutput.stderr,
+      exitCode: rightCommandOutput.exitCode
+    };
+  }
+
+  function interpretCommand(command) {
+    let name = command.name;
+    let prefixes = command.prefix || [];
+    let suffixes = command.suffix || [];
+
     let fromScope = outgoingState.interpreterState.shellScope;
     let toScope = interpretingCommand(name) ?
       outgoingState.interpreterState.commandScope :
@@ -38,7 +64,7 @@ function bashInterpreter(incomingState) {
     assignParameters(prefixes, fromScope, toScope);
     return interpretingCommand(name) ?
       executeCommand(name, suffixes) :
-      '';
+      {stdout: '', stderr: '', exitCode: 0};
   }
 
   function executeCommand(name, suffixes) {
@@ -51,8 +77,7 @@ function bashInterpreter(incomingState) {
     }
 
     const commandFunction = getCommandFunction(commandName);
-    const commandOutput = commandFunction(commandArguments);
-    return commandOutput.stdout + commandOutput.stderr;
+    return commandFunction(commandArguments);
   }
 
   function expandTextBlocks(suffixes) {

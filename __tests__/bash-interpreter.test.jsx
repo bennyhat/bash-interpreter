@@ -557,4 +557,372 @@ describe('bashInterpreter', () => {
       expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file', 'something']);
     });
   });
+  describe('given multiple commands that are "AND"ed together', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "LogicalExpression",
+            "op": "and",
+            "left": {
+              "type": "LogicalExpression",
+              "op": "and",
+              "left": {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              },
+              "right": {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              }
+            },
+            "right": {
+              "type": "Command",
+              "name": {
+                "text": "fakeCommand",
+                "type": "Word"
+              },
+              "suffix": [
+                {
+                  "text": "something",
+                  "type": "Word"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      fakeCommand.mockClear();
+      fakeCommand.mockReset();
+      fakeCommand
+        .mockReturnValueOnce({
+          stdout: 'something',
+          stderr: '',
+          exitCode: 0
+        })
+        .mockReturnValueOnce({
+          stdout: 'something',
+          stderr: '',
+          exitCode: 0
+        })
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'failure\n',
+          exitCode: 1
+        });
+      newState = bashInterpreter(incomingState);
+    });
+    it('returns the stderr + stdout for all commands', () => {
+      expect(newState.interpreterOutput).toEqual('somethingsomethingfailure\n');
+    });
+    it('calls the fake command three times',()=> {
+      expect(fakeCommand).toHaveBeenCalledTimes(3);
+    });
+  });
+  describe('given multiple commands that are "OR"ed together', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "LogicalExpression",
+            "op": "or",
+            "left": {
+              "type": "LogicalExpression",
+              "op": "or",
+              "left": {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              },
+              "right": {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              }
+            },
+            "right": {
+              "type": "Command",
+              "name": {
+                "text": "fakeCommand",
+                "type": "Word"
+              },
+              "suffix": [
+                {
+                  "text": "something",
+                  "type": "Word"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      fakeCommand.mockClear();
+      fakeCommand.mockReset();
+      fakeCommand
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'failure',
+          exitCode: 1
+        })
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'failure',
+          exitCode: 1
+        })
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'something',
+          exitCode: 0
+        });
+      newState = bashInterpreter(incomingState);
+    });
+    it('returns the stderr + stdout for all commands', () => {
+      expect(newState.interpreterOutput).toEqual('failurefailuresomething');
+    });
+    it('calls the fake command three times',()=> {
+      expect(fakeCommand).toHaveBeenCalledTimes(3);
+    });
+  });
+  describe('given multiple commands that are "AND"ed and "OR"ed together', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "LogicalExpression",
+            "op": "or",
+            "left": {
+              "type": "LogicalExpression",
+              "op": "and",
+              "left": {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              },
+              "right": {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              }
+            },
+            "right": {
+              "type": "Command",
+              "name": {
+                "text": "fakeCommand",
+                "type": "Word"
+              },
+              "suffix": [
+                {
+                  "text": "something",
+                  "type": "Word"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      fakeCommand.mockClear();
+      fakeCommand.mockReset();
+      fakeCommand
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'something',
+          exitCode: 0
+        })
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'failure',
+          exitCode: 1
+        })
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'something',
+          exitCode: 0
+        });
+      newState = bashInterpreter(incomingState);
+    });
+    it('returns the stderr + stdout for all commands', () => {
+      expect(newState.interpreterOutput).toEqual('somethingfailuresomething');
+    });
+    it('calls the fake command three times',()=> {
+      expect(fakeCommand).toHaveBeenCalledTimes(3);
+    });
+  });
+  describe('given multiple commands that are "OR"ed and "AND"ed together', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "LogicalExpression",
+            "op": "and",
+            "left": {
+              "type": "LogicalExpression",
+              "op": "or",
+              "left": {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              },
+              "right": {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              }
+            },
+            "right": {
+              "type": "Command",
+              "name": {
+                "text": "fakeCommand",
+                "type": "Word"
+              },
+              "suffix": [
+                {
+                  "text": "something",
+                  "type": "Word"
+                }
+              ]
+            }
+          }
+        ]
+      },
+      interpreterOutput: '',
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      fakeCommand.mockClear();
+      fakeCommand.mockReset();
+      fakeCommand
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'failure',
+          exitCode: 1
+        })
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'failure',
+          exitCode: 1
+        })
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'something',
+          exitCode: 0
+        });
+      newState = bashInterpreter(incomingState);
+    });
+    it('returns the stderr + stdout for all commands', () => {
+      expect(newState.interpreterOutput).toEqual('failurefailure');
+    });
+    it('calls the fake command three times',()=> {
+      expect(fakeCommand).toHaveBeenCalledTimes(2);
+    });
+  });
 });
