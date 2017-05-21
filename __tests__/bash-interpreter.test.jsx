@@ -19,6 +19,12 @@ describe('bashInterpreter', () => {
     builtinExport.mockClear();
     expandText.mockImplementation((text) => text);
 
+    bash.mockReturnValue({
+      stdout: '',
+      stderr: '',
+      exitCode: 0
+    });
+
     configuration.functionMaps.command = {
       'fakeCommand': fakeCommand,
       'bash': bash
@@ -60,6 +66,10 @@ describe('bashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
+      fakeCommand.mockReturnValue({
+        stdout: 'something\n',
+        stderr: 'error stuff\n'
+      });
       newState = bashInterpreter(incomingState);
     });
     it('calls the expand parameters function for the parameter text, even with no expansions', () => {
@@ -67,6 +77,9 @@ describe('bashInterpreter', () => {
     });
     it('calls the fake command with the parts in the suffix', () => {
       expect(fakeCommand).toBeCalledWith(incomingState.interpreterState.exportedScope, ['a literal string']);
+    });
+    it('returns the stdout and stderr of the fake command in the interpreter output (will make more sense when this streams)', () => {
+      expect(newState.interpreterOutput).toEqual('something\nerror stuff\n');
     });
   });
 
@@ -369,7 +382,7 @@ describe('bashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
-      fakeCommand.mockReturnValue('something\n');
+      fakeCommand.mockReturnValue({stdout: 'something\n'});
       assignParameters.mockImplementation((assignmentList = [], ignoredFromScope, toScope) => {
         if (assignmentList.length > 0) {
           toScope['a'] = 'asvalue'

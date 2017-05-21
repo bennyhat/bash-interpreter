@@ -51,8 +51,8 @@ function bashInterpreter(incomingState) {
     }
 
     const commandFunction = getCommandFunction(commandName);
-
-    return commandFunction(commandArguments);
+    const commandOutput = commandFunction(commandArguments);
+    return commandOutput.stdout + commandOutput.stderr;
   }
 
   function expandTextBlocks(suffixes) {
@@ -70,6 +70,11 @@ function bashInterpreter(incomingState) {
     return function commandFunctionWrapper(argumentList) {
       if (commandType === 'builtin') {
         outgoingState.interpreterState = commandFunction(outgoingState.interpreterState, argumentList);
+        return {
+          stdout: '',
+          stderr: '',
+          exitCode: 0
+        };
       }
       else {
         outgoingState.interpreterOutputPrintable = true;
