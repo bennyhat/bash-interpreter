@@ -16,25 +16,33 @@ describe('bash', () => {
     bashInterpreter.mockClear();
     fakeCommand.mockClear();
   });
+
   describe('given an environment scope, and no arguments', () => {
     let environment = {
       'a': 'b'
     };
-    let output = '';
+    let output = {};
 
     beforeEach(() => {
       output = bash(environment, []);
     });
 
-    it('returns text indicating that interactive bash is not supported', () => {
-      expect(output).toMatch(/^ERROR:.*?not supported/);
+    it('returns stderr indicating how to use this command', () => {
+      expect(output.stderr).toMatch(/^USAGE:.*?/);
+    });
+    it('returns nothing to stdout', () => {
+      expect(output.stdout).toEqual('');
+    });
+    it('returns a non-zero exit code', () => {
+      expect(output.exitCode).not.toEqual(0);
+      expect(output.exitCode).toBeDefined();
     });
   });
   describe('given an environment scope, and a script file that fails to read/parse/interpret, etc.', () => {
     let environment = {
       'a': 'b'
     };
-    let output = '';
+    let output = {};
 
     beforeEach(() => {
       fs.readFileSync.mockImplementation(() => {
@@ -44,7 +52,14 @@ describe('bash', () => {
     });
 
     it('returns text indicating that the file was not found/or read', () => {
-      expect(output).toMatch(/^ERROR:.*?error interpreting script-file/);
+      expect(output.stderr).toMatch(/^ERROR:.*?error interpreting script/);
+    });
+    it('returns nothing to stdout', () => {
+      expect(output.stdout).toEqual('');
+    });
+    it('returns a non-zero exit code', () => {
+      expect(output.exitCode).not.toEqual(0);
+      expect(output.exitCode).toBeDefined();
     });
   });
   describe('given an environment scope, a script file, and a list of arguments', () => {
@@ -66,21 +81,13 @@ describe('bash', () => {
             {
               "text": "something",
               "type": "Word"
-            },
-            {
-              "text": "arg1",
-              "type": "Word"
-            },
-            {
-              "text": "arg2",
-              "type": "Word"
             }
           ]
         }
       ]
     };
 
-    let output = '';
+    let output = {};
 
     beforeEach(() => {
       fs.readFileSync.mockReturnValue(scriptFileContents);
@@ -99,7 +106,13 @@ describe('bash', () => {
     });
 
     it('reads from the file, then parses and interprets the contents', () => {
-      expect(output).toEqual('something\n');
+      expect(output.stdout).toEqual('something\n');
+    });
+    it('returns nothing to stdout', () => {
+      expect(output.stderr).toEqual('');
+    });
+    it('returns a non-zero exit code', () => {
+      expect(output.exitCode).toEqual(0);
     });
 
     it('passes the environment and arguments into the interpreter as shell scope', () => {
@@ -114,6 +127,113 @@ describe('bash', () => {
           }
         }
       });
+    });
+  });
+  describe('given an environment scope, a -c argument nothing else', () => {
+    let environment = {
+      'a': 'b'
+    };
+
+    let output = {};
+
+    beforeEach(() => {
+      output = bash(environment, ['-c']);
+    });
+
+    it('returns text indicating proper usage of the command', () => {
+      expect(output.stderr).toMatch(/^USAGE:.*?/);
+    });
+    it('returns nothing to stdout', () => {
+      expect(output.stdout).toEqual('');
+    });
+    it('returns a non-zero exit code', () => {
+      expect(output.exitCode).not.toEqual(0);
+      expect(output.exitCode).toBeDefined();
+    });
+  });
+  describe('given an environment scope, a -c argument and a script in string form', () => {
+    let environment = {
+      'a': 'b'
+    };
+
+    let parsedScriptString = {
+      "type": "Script",
+      "commands": [
+        {
+          "type": "Command",
+          "name": {
+            "text": "fakeCommand",
+            "type": "Word"
+          },
+          "suffix": [
+            {
+              "text": "something",
+              "type": "Word"
+            }
+          ]
+        }
+      ]
+    };
+
+    let output = {};
+
+    beforeEach(() => {
+      bashParser.mockImplementation((script) => {
+        if(script === 'fakeCommand something') {
+          return parsedScriptString;
+        }
+      });
+      bashInterpreter.mockImplementation((incomingState) => {
+        if (incomingState.parserOutput === parsedScriptString) {
+          return {interpreterOutput: 'something\n'};
+        }
+      });
+
+      output = bash(environment, ['-c', 'fakeCommand something']);
+    });
+
+    it('parses the script string and interprets the contents', () => {
+      expect(output.stdout).toEqual('something\n');
+    });
+    it('returns nothing to stdout', () => {
+      expect(output.stderr).toEqual('');
+    });
+    it('returns a non-zero exit code', () => {
+      expect(output.exitCode).toEqual(0);
+    });
+
+    it('passes the environment and arguments into the interpreter as shell scope', () => {
+      expect(bashInterpreter).toBeCalledWith({
+        parserOutput: parsedScriptString,
+        interpreterState: {
+          shellScope: {
+            'a':'b',
+            '0':'bash'
+          }
+        }
+      });
+    });
+  });
+  describe('given an environment scope, and any other flags as the first parameter', () => {
+    let environment = {
+      'a': 'b'
+    };
+
+    let output = {};
+
+    beforeEach(() => {
+      output = bash(environment, ['-d']);
+    });
+
+    it('returns text indicating proper usage of the command', () => {
+      expect(output.stderr).toMatch(/^USAGE:.*?/);
+    });
+    it('returns nothing to stdout', () => {
+      expect(output.stdout).toEqual('');
+    });
+    it('returns a non-zero exit code', () => {
+      expect(output.exitCode).not.toEqual(0);
+      expect(output.exitCode).toBeDefined();
     });
   });
 });
