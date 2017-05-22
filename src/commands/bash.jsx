@@ -56,12 +56,7 @@ export default function bash(environment, parameterList = []) {
         shellScope: copyAndMergeState(environment, parameterState)
       }
     };
-    let interpreterOutput = bashInterpreter(incomingState);
-    return {
-      stdout: interpreterOutput.interpreterOutput,
-      stderr: '',
-      exitCode: 0
-    };
+    return bashInterpreter(incomingState).interpreterOutput;
   }
   catch (exception) {
     return {

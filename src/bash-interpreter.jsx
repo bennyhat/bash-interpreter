@@ -18,7 +18,7 @@ function bashInterpreter(incomingState) {
       commandScope: {},
       exportedScope: {}
     },
-    interpreterOutput: '',
+    interpreterOutput: [],
     interpreterOutputPrintable: false
   };
 
@@ -29,8 +29,9 @@ function bashInterpreter(incomingState) {
 
   outgoingState = copyAndMergeState(outgoingState, incomingState);
   outgoingState.parserOutput.commands.forEach((command) => {
-    const commandOutput = commandTypeMap[command.type](command);
-    outgoingState.interpreterOutput += commandOutput.stdout + commandOutput.stderr;
+    let items = commandTypeMap[command.type](command);
+    outgoingState.interpreterOutput.push(items);
+    outgoingState.interpreterOutput = flattenArray(outgoingState.interpreterOutput);
   });
 
   return outgoingState;
@@ -40,15 +41,20 @@ function bashInterpreter(incomingState) {
     let rightCommand = expression.right;
     let operation = expression.op;
 
-    let leftCommandOutput = commandTypeMap[leftCommand.type](leftCommand);
-    if (leftCommandOutput.exitCode !== 0 && operation === 'and') return leftCommandOutput;
-    let rightCommandOutput = commandTypeMap[rightCommand.type](rightCommand);
+    let leftCommandOutput = flattenArray(commandTypeMap[leftCommand.type](leftCommand));
+    if (leftCommandOutput[leftCommandOutput.length - 1].exitCode !== 0 &&
+      operation === 'and') return leftCommandOutput;
+    let rightCommandOutput = flattenArray(commandTypeMap[rightCommand.type](rightCommand));
+    return [leftCommandOutput, rightCommandOutput];
+  }
 
-    return {
-      stdout: leftCommandOutput.stdout + rightCommandOutput.stdout,
-      stderr: leftCommandOutput.stderr + rightCommandOutput.stderr,
-      exitCode: rightCommandOutput.exitCode
-    };
+  function flattenArray(array) {
+    return array.reduce((acc, curr) => {
+      if (curr instanceof Array) {
+        return acc.concat(flattenArray(curr));
+      }
+      return acc.concat([curr]);
+    }, []);
   }
 
   function interpretCommand(command) {
@@ -63,8 +69,8 @@ function bashInterpreter(incomingState) {
 
     assignParameters(prefixes, fromScope, toScope);
     return interpretingCommand(name) ?
-      executeCommand(name, suffixes) :
-      {stdout: '', stderr: '', exitCode: 0};
+      [executeCommand(name, suffixes)] :
+      [{stdout: '', stderr: '', exitCode: 0}];
   }
 
   function executeCommand(name, suffixes) {

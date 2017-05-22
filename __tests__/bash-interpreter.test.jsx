@@ -51,7 +51,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {
@@ -68,7 +67,8 @@ describe('bashInterpreter', () => {
     beforeEach(() => {
       fakeCommand.mockReturnValue({
         stdout: 'something\n',
-        stderr: 'error stuff\n'
+        stderr: 'error stuff\n',
+        exitCode: 0
       });
       newState = bashInterpreter(incomingState);
     });
@@ -78,8 +78,14 @@ describe('bashInterpreter', () => {
     it('calls the fake command with the parts in the suffix', () => {
       expect(fakeCommand).toBeCalledWith(incomingState.interpreterState.exportedScope, ['a literal string']);
     });
-    it('returns the stdout and stderr of the fake command in the interpreter output (will make more sense when this streams)', () => {
-      expect(newState.interpreterOutput).toEqual('something\nerror stuff\n');
+    it('returns the stdout of the fake command in the interpreter output (will make more sense when this streams)', () => {
+      expect(newState.interpreterOutput[0].stdout).toEqual('something\n');
+    });
+    it('returns the stderr of the fake command in the interpreter output (will make more sense when this streams)', () => {
+      expect(newState.interpreterOutput[0].stderr).toEqual('error stuff\n');
+    });
+    it('returns the exit code of the fake command in the interpreter output (will make more sense when this streams)', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(0);
     });
   });
 
@@ -99,7 +105,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {
@@ -118,6 +123,15 @@ describe('bashInterpreter', () => {
         incomingState.parserOutput.commands[0].prefix,
         incomingState.interpreterState.shellScope,
         incomingState.interpreterState.shellScope);
+    });
+    it('returns a blank stdout', () => {
+      expect(newState.interpreterOutput[0].stdout).toEqual('');
+    });
+    it('returns a blank stderr', () => {
+      expect(newState.interpreterOutput[0].stderr).toEqual('');
+    });
+    it('returns a 0 exit code', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(0);
     });
   });
   describe('given a script with an assignment and command', () => {
@@ -146,7 +160,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {
@@ -225,7 +238,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {
@@ -272,7 +284,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {},
@@ -291,7 +302,7 @@ describe('bashInterpreter', () => {
     });
   });
 
-  describe('given consecutive commands, those commands can share state', () => {
+  describe('given consecutive commands', () => {
     let incomingState = {
       parserOutput: {
         "type": "Script",
@@ -330,7 +341,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {},
@@ -341,6 +351,11 @@ describe('bashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
+      fakeCommand.mockReturnValue({
+        stdout: 'fake stdout',
+        stderr: 'fake stderr',
+        exitCode: 1
+      });
       assignParameters.mockImplementation((assignmentList = [], ignoredFromScope, toScope) => {
         if (assignmentList.length > 0) {
           toScope['a'] = 'asvalue'
@@ -351,9 +366,22 @@ describe('bashInterpreter', () => {
       newState = bashInterpreter(incomingState);
     });
 
-    it('assigns the output of the sub-shell into that parameter in shell scope', () => {
+    it('the commands share state (variables assignment gets picked up in next command)', () => {
       expect(fakeCommand).toBeCalledWith({}, ['asvalue']);
     });
+    it('returns a blank stdout and the fake command stdout', () => {
+      expect(newState.interpreterOutput[0].stdout).toEqual('');
+      expect(newState.interpreterOutput[1].stdout).toEqual('fake stdout');
+    });
+    it('returns a blank stderr and the fake command stderr', () => {
+      expect(newState.interpreterOutput[0].stderr).toEqual('');
+      expect(newState.interpreterOutput[1].stderr).toEqual('fake stderr');
+    });
+    it('returns a 0 exit code and the fake command exit code', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(0);
+      expect(newState.interpreterOutput[1].exitCode).toEqual(1);
+    });
+
   });
   describe('given consecutive scripts, those scripts can share state', () => {
     let incomingState = {
@@ -371,7 +399,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {},
@@ -443,7 +470,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {},
@@ -483,7 +509,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {},
@@ -533,7 +558,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {
@@ -611,7 +635,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {},
@@ -642,8 +665,15 @@ describe('bashInterpreter', () => {
         });
       newState = bashInterpreter(incomingState);
     });
-    it('returns the stderr + stdout for all commands', () => {
-      expect(newState.interpreterOutput).toEqual('somethingsomethingfailure\n');
+    it('returns the stderr or stdout for all commands', () => {
+      expect(newState.interpreterOutput[0].stdout).toEqual('something');
+      expect(newState.interpreterOutput[1].stdout).toEqual('something');
+      expect(newState.interpreterOutput[2].stderr).toEqual('failure\n');
+    });
+    it('returns the exit codes for all commands', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(0);
+      expect(newState.interpreterOutput[1].exitCode).toEqual(0);
+      expect(newState.interpreterOutput[2].exitCode).toEqual(1);
     });
     it('calls the fake command three times',()=> {
       expect(fakeCommand).toHaveBeenCalledTimes(3);
@@ -703,7 +733,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {},
@@ -728,14 +757,21 @@ describe('bashInterpreter', () => {
           exitCode: 1
         })
         .mockReturnValueOnce({
-          stdout: '',
-          stderr: 'something',
+          stdout: 'something',
+          stderr: '',
           exitCode: 0
         });
       newState = bashInterpreter(incomingState);
     });
-    it('returns the stderr + stdout for all commands', () => {
-      expect(newState.interpreterOutput).toEqual('failurefailuresomething');
+    it('returns the stderr or stdout for all commands', () => {
+      expect(newState.interpreterOutput[0].stderr).toEqual('failure');
+      expect(newState.interpreterOutput[1].stderr).toEqual('failure');
+      expect(newState.interpreterOutput[2].stdout).toEqual('something');
+    });
+    it('returns the exit codes for all commands', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(1);
+      expect(newState.interpreterOutput[1].exitCode).toEqual(1);
+      expect(newState.interpreterOutput[2].exitCode).toEqual(0);
     });
     it('calls the fake command three times',()=> {
       expect(fakeCommand).toHaveBeenCalledTimes(3);
@@ -795,7 +831,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {},
@@ -810,8 +845,8 @@ describe('bashInterpreter', () => {
       fakeCommand.mockReset();
       fakeCommand
         .mockReturnValueOnce({
-          stdout: '',
-          stderr: 'something',
+          stdout: 'something',
+          stderr: '',
           exitCode: 0
         })
         .mockReturnValueOnce({
@@ -820,14 +855,21 @@ describe('bashInterpreter', () => {
           exitCode: 1
         })
         .mockReturnValueOnce({
-          stdout: '',
-          stderr: 'something',
+          stdout: 'something',
+          stderr: '',
           exitCode: 0
         });
       newState = bashInterpreter(incomingState);
     });
-    it('returns the stderr + stdout for all commands', () => {
-      expect(newState.interpreterOutput).toEqual('somethingfailuresomething');
+    it('returns the stderr or stdout for all commands', () => {
+      expect(newState.interpreterOutput[0].stdout).toEqual('something');
+      expect(newState.interpreterOutput[1].stderr).toEqual('failure');
+      expect(newState.interpreterOutput[2].stdout).toEqual('something');
+    });
+    it('returns the exit codes for all commands', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(0);
+      expect(newState.interpreterOutput[1].exitCode).toEqual(1);
+      expect(newState.interpreterOutput[2].exitCode).toEqual(0);
     });
     it('calls the fake command three times',()=> {
       expect(fakeCommand).toHaveBeenCalledTimes(3);
@@ -887,7 +929,6 @@ describe('bashInterpreter', () => {
           }
         ]
       },
-      interpreterOutput: '',
       interpreterOutputPrintable: false,
       interpreterState: {
         shellScope: {},
@@ -912,14 +953,19 @@ describe('bashInterpreter', () => {
           exitCode: 1
         })
         .mockReturnValueOnce({
-          stdout: '',
-          stderr: 'something',
+          stdout: 'something',
+          stderr: '',
           exitCode: 0
         });
       newState = bashInterpreter(incomingState);
     });
-    it('returns the stderr + stdout for all commands', () => {
-      expect(newState.interpreterOutput).toEqual('failurefailure');
+    it('returns the stderr or stdout for all commands', () => {
+      expect(newState.interpreterOutput[0].stderr).toEqual('failure');
+      expect(newState.interpreterOutput[1].stderr).toEqual('failure');
+    });
+    it('returns the exit codes for all commands', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(1);
+      expect(newState.interpreterOutput[1].exitCode).toEqual(1);
     });
     it('calls the fake command three times',()=> {
       expect(fakeCommand).toHaveBeenCalledTimes(2);

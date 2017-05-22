@@ -92,13 +92,19 @@ describe('bash', () => {
     beforeEach(() => {
       fs.readFileSync.mockReturnValue(scriptFileContents);
       bashParser.mockImplementation((script) => {
-        if(script === 'fakeCommand something') {
+        if (script === 'fakeCommand something') {
           return parsedScriptFileContents;
         }
       });
       bashInterpreter.mockImplementation((incomingState) => {
         if (incomingState.parserOutput === parsedScriptFileContents) {
-          return {interpreterOutput: 'something\n'};
+          return {
+            interpreterOutput: {
+              stdout: '',
+              stderr: 'error',
+              exitCode: 1
+            }
+          };
         }
       });
 
@@ -106,13 +112,13 @@ describe('bash', () => {
     });
 
     it('reads from the file, then parses and interprets the contents', () => {
-      expect(output.stdout).toEqual('something\n');
+      expect(output.stdout).toEqual('');
     });
     it('returns nothing to stdout', () => {
-      expect(output.stderr).toEqual('');
+      expect(output.stderr).toEqual('error');
     });
     it('returns a non-zero exit code', () => {
-      expect(output.exitCode).toEqual(0);
+      expect(output.exitCode).toEqual(1);
     });
 
     it('passes the environment and arguments into the interpreter as shell scope', () => {
@@ -120,10 +126,10 @@ describe('bash', () => {
         parserOutput: parsedScriptFileContents,
         interpreterState: {
           shellScope: {
-            'a':'b',
-            '0':'script-file',
-            '1':'arg1',
-            '2':'arg2'
+            'a': 'b',
+            '0': 'script-file',
+            '1': 'arg1',
+            '2': 'arg2'
           }
         }
       });
@@ -179,13 +185,19 @@ describe('bash', () => {
 
     beforeEach(() => {
       bashParser.mockImplementation((script) => {
-        if(script === 'fakeCommand something') {
+        if (script === 'fakeCommand something') {
           return parsedScriptString;
         }
       });
       bashInterpreter.mockImplementation((incomingState) => {
         if (incomingState.parserOutput === parsedScriptString) {
-          return {interpreterOutput: 'something\n'};
+          return {
+            interpreterOutput: {
+              stdout: 'something\n',
+              stderr: '',
+              exitCode: 0
+            }
+          };
         }
       });
 
@@ -207,8 +219,8 @@ describe('bash', () => {
         parserOutput: parsedScriptString,
         interpreterState: {
           shellScope: {
-            'a':'b',
-            '0':'bash'
+            'a': 'b',
+            '0': 'bash'
           }
         }
       });
