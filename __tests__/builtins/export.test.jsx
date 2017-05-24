@@ -10,21 +10,30 @@ describe('builtinExport', () => {
       commandScope: {},
       exportedScope: {}
     };
-    let newState = {};
+    let output = {};
 
     beforeEach(() => {
-      newState = builtinExport(incomingState, ['a=b']);
+      output = builtinExport(incomingState, ['a=b']);
     });
 
     it('adds the variable to the exported scope', () => {
-      expect(newState.exportedScope).toEqual({'a': 'b'});
+      expect(incomingState.exportedScope).toEqual({
+        'a': 'b'
+      });
     });
     it('adds the variable to the shell scope', () => {
-      expect(newState.shellScope).toEqual({
+      expect(incomingState.shellScope).toEqual({
         'a': 'b',
         'c': 'd',
         'd': 'e'
       });
+    });
+    it('returns a successful output', ()=> {
+      expect(output).toEqual({
+        stdout: '',
+        stderr: '',
+        exitCode: 0
+      })
     });
   });
 });

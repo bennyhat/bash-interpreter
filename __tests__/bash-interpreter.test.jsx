@@ -14,7 +14,7 @@ describe('bashInterpreter', () => {
   beforeEach(() => {
     fakeCommand.mockClear();
     bash.mockClear();
-    assignParameters.mockClear();
+    assignParameters.mockReset();
     expandText.mockClear();
     builtinExport.mockClear();
     expandText.mockImplementation((text) => text);

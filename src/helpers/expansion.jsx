@@ -28,4 +28,12 @@ function expandText(originalText, expansionList = [], scopeList = []) {
   }, originalText);
 }
 
-export {expandText};
+function expandTextBlocks(suffixes, state) {
+  return suffixes.map((suffix) => {
+    return expandText(suffix.text, suffix.expansion, [state.shellScope]);
+  }).filter((expandedSuffix) => {
+    return expandedSuffix !== '';
+  });
+}
+
+export {expandTextBlocks};
