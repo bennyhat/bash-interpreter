@@ -48,7 +48,7 @@ function getCommandFunction(name, state) {
       return commandFunction(state, argumentList);
     }
     else {
-      return commandFunction(getDefaultCommandScope(), argumentList);
+      return commandFunction(getDefaultCommandScope(state), argumentList);
     }
   };
 }

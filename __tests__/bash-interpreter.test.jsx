@@ -31,6 +31,7 @@ describe('bashInterpreter', () => {
     };
   });
 
+  // TODO - moved
   describe('given a script with a fake command', () => {
     let incomingState = {
       parserOutput: {
@@ -88,7 +89,7 @@ describe('bashInterpreter', () => {
       expect(newState.interpreterOutput[0].exitCode).toEqual(0);
     });
   });
-
+  // TODO - moved
   describe('given a script with an assignment', () => {
     let incomingState = {
       parserOutput: {
@@ -134,6 +135,7 @@ describe('bashInterpreter', () => {
       expect(newState.interpreterOutput[0].exitCode).toEqual(0);
     });
   });
+  // TODO - moved
   describe('given a script with an assignment and command', () => {
     let incomingState = {
       parserOutput: {
@@ -456,6 +458,7 @@ describe('bashInterpreter', () => {
     });
   });
 
+  // TODO - move to commands
   describe('given a command containing a slash', () => {
     let incomingState = {
       parserOutput: {
@@ -489,6 +492,7 @@ describe('bashInterpreter', () => {
       expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file']);
     });
   });
+  // TODO - move to commands
   describe('given a command containing a slash and arguments', () => {
     let incomingState = {
       parserOutput: {
@@ -528,6 +532,7 @@ describe('bashInterpreter', () => {
       expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file', 'something']);
     });
   });
+  // TODO - move to commands
   describe('given a command containing a slash that comes from expansion', () => {
     let incomingState = {
       parserOutput: {
@@ -581,6 +586,7 @@ describe('bashInterpreter', () => {
       expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file', 'something']);
     });
   });
+
   describe('given multiple commands that are "AND"ed together', () => {
     let incomingState = {
       parserOutput: {
