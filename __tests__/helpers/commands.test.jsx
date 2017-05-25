@@ -1,17 +1,22 @@
 jest.mock('../../src/helpers/parameters');
 jest.mock('../../src/bash-interpreter');
 
-import {assignParameters} from '../../src/helpers/parameters';
+import {assignParameters, expandParameter} from '../../src/helpers/parameters';
 import {interpretCommand} from '../../src/helpers/commands';
 import {configuration} from '../../src/bash-interpreter';
 
 describe('commands', () => {
   let fakeCommand = jest.fn();
+  let fakeBash = jest.fn();
+
   beforeEach(() => {
     fakeCommand.mockReset();
+    fakeBash.mockReset();
+    expandParameter.mockReset();
     assignParameters.mockReset();
     configuration.functionMaps.command = {
-      'fakeCommand': fakeCommand
+      'fakeCommand': fakeCommand,
+      'bash': fakeBash
     }
   });
 
@@ -132,6 +137,79 @@ describe('commands', () => {
         stderr: 'stderr',
         exitCode: 1
       }]);
+    });
+  });
+  describe('#interpretCommand() given a command containing a slash and arguments', () => {
+    const command = {
+      "type": "Command",
+      "name": {
+        "text": "./script-file",
+        "type": "Word"
+      },
+      "suffix": [
+        {
+          "text": "something",
+          "type": "Word"
+        },
+        {
+          "text": "else",
+          "type": "Word"
+        }
+      ]
+    };
+    let state = {
+      shellScope:{},
+      commandScope:{}
+    };
+    let output = {};
+
+    beforeEach(() => {
+      output = interpretCommand(command, state);
+    });
+
+    it('calls the fake bash command with the script file and its arguments', () => {
+      expect(fakeBash).toBeCalledWith({}, ['./script-file', 'something', 'else']);
+    });
+  });
+  describe('#interpretCommand() given a command name that requires expansion', () => {
+    const command = {
+      "type": "Command",
+      "name": {
+        "text": "${script_var}",
+        "expansion": [
+          {
+            "loc": {
+              "start": 0,
+              "end": 12
+            },
+            "parameter": "script_var",
+            "type": "ParameterExpansion"
+          }
+        ],
+        "type": "Word"
+      },
+      "suffix": [
+        {
+          "text": "something",
+          "type": "Word"
+        }
+      ]
+    };
+    let state = {
+      shellScope:{
+        'script_var':'fakeCommand'
+      },
+      commandScope:{}
+    };
+    let output = {};
+
+    beforeEach(() => {
+      expandParameter.mockReturnValue('fakeCommand');
+      output = interpretCommand(command, state);
+    });
+
+    it('calls the fake command that comes from the expansion', () => {
+      expect(fakeCommand).toBeCalledWith({}, ['something']);
     });
   });
 });
