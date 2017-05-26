@@ -4,7 +4,6 @@ jest.mock('../src/builtins/export');
 
 import {bashInterpreter, configuration} from "../src/bash-interpreter";
 import {assignParameters} from '../src/helpers/parameters';
-import {expandText} from '../src/helpers/expansion';
 import builtinExport from '../src/builtins/export';
 
 describe('bashInterpreter', () => {

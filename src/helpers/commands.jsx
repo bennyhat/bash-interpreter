@@ -2,8 +2,9 @@ import {bashInterpreter, configuration} from '../bash-interpreter';
 import {assignParameters} from './parameters';
 import {expandTextBlocks} from './expansion';
 
-function expandCommand(expansion) {
+function expandCommand(expansion, state) {
   let subShellInputState = {
+    interpreterState: state,
     parserOutput: expansion.commandAST
   };
   let subShellOutputState = bashInterpreter(subShellInputState);

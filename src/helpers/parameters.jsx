@@ -1,31 +1,40 @@
-import {copyAndMergeState} from './state';
 import {expandText} from './expansion';
 
-function assignParameters(assignmentList = [], fromScope, toScope) {
-  let referenceScope = copyAndMergeState(fromScope);
+const typeMap = {
+  command: (state) => {
+    return state.commandScope;
+  },
+  exported: (state) => {
+    return state.exportedScope
+  },
+  shell: (state) => {
+    return state.shellScope
+  }
+};
+
+function assignParameters(assignmentList = [], state, type = 'shell') {
+  let fromScope = state.shellScope;
+  let toScope = typeMap[type](state);
 
   assignmentList.forEach((assignment) => {
     const expandedText = expandText(
       assignment.text,
       assignment.expansion,
-      [referenceScope]
+      state
     );
     const splitText = expandedText.split('=');
 
     const name = splitText[0];
     const value = splitText[1];
 
-    Object.assign(referenceScope, referenceScope, {[name]: value});
-    Object.assign(toScope, toScope, {[name]: value});
+    Object.assign(toScope, fromScope, {[name]: value});
+    Object.assign(toScope, fromScope, {[name]: value});
   });
 }
 
-function expandParameter(scopeList, expansionParameter) {
-  const scope = scopeList.find((scope) => {
-      return expansionParameter in scope;
-    }) || {[expansionParameter]: ''};
-
-  return scope[expansionParameter];
+function expandParameter(expansionParameter, state) {
+  if (!(expansionParameter in state.shellScope)) return '';
+  return state.shellScope[expansionParameter];
 }
 
 export {assignParameters, expandParameter}

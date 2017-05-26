@@ -1,87 +1,106 @@
-import {expandText} from '../../src/helpers/expansion';
+jest.mock('../../src/helpers/commands');
+jest.mock('../../src/helpers/parameters');
+import {expandCommand} from '../../src/helpers/commands';
+import {expandParameter} from '../../src/helpers/parameters';
+import {expandTextBlocks} from '../../src/helpers/expansion'
 
-jest.mock('../../src/bash-interpreter');
-import bashInterpreter from '../../src/bash-interpreter.jsx';
-
-// TODO - stub the underlying expanders and add unit tests to commands helper
 describe('expansion', () => {
-  describe('#expandText() given text with replaceable tokens, a parameter expansion list and a from scope', () => {
-    const replaceableText = '${c}something$d';
-    const expansionList = [
+  describe('#expandTextBlocks() given text with replaceable tokens, a parameter expansion list and an interpreter state', () => {
+    const suffixes = [
       {
-        "loc": {
-          "start": 0,
-          "end": 3
-        },
-        "parameter": "c",
-        "type": "ParameterExpansion"
-      },
-      {
-        "loc": {
-          "start": 13,
-          "end": 14
-        },
-        "parameter": "d",
-        "type": "ParameterExpansion"
+        "text": "${c}something$d",
+        "expansion": [
+          {
+            "loc": {
+              "start": 0,
+              "end": 3
+            },
+            "parameter": "c",
+            "type": "ParameterExpansion"
+          },
+          {
+            "loc": {
+              "start": 13,
+              "end": 14
+            },
+            "parameter": "d",
+            "type": "ParameterExpansion"
+          }
+        ],
+        "type": "Word"
       }
     ];
-    const fromScopeList = [{
-      'c': 'g',
-      'd': 'h'
-    }];
+    const state = {
+      commandScope: {
+        'c': 'g',
+        'd': 'h'
+      }
+    };
     let replacedText = '';
 
     beforeEach(() => {
-      replacedText = expandText(replaceableText, expansionList, fromScopeList);
+      replacedText = expandTextBlocks(suffixes, state);
     });
 
-    it('adds the variable to the to scope', () => {
-      expect(replacedText).toEqual('gsomethingh');
+    it('calls the expandParameter function with the first expansion parameter and the state', () => {
+      expect(expandParameter).toBeCalledWith('c', state);
+    });
+    it('calls the expandParameter function with the second expansion parameter and the state', () => {
+      expect(expandParameter).toBeCalledWith('d', state);
     });
   });
-  describe('#expandText() given text with replaceable tokens, a command expansion list and a from scope', () => {
-    const replaceableText = 'a$(fakeCommand something)b';
-    const expansionList = [
+  describe('#expandTextBlocks() given text with replaceable tokens, a command expansion list and an interpreter state', () => {
+    const suffixes = [
       {
-        "loc": {
-          "start": 1,
-          "end": 24
-        },
-        "command": "fakeCommand something",
-        "type": "CommandExpansion",
-        "commandAST": {
-          "type": "Script",
-          "commands": [
-            {
-              "type": "Command",
-              "name": {
-                "text": "fakeCommand",
-                "type": "Word"
-              },
-              "suffix": [
+        "text": "$(fakeCommand something)",
+        "expansion": [
+          {
+            "loc": {
+              "start": 0,
+              "end": 23
+            },
+            "command": "fakeCommand something",
+            "type": "CommandExpansion",
+            "commandAST": {
+              "type": "Script",
+              "commands": [
                 {
-                  "text": "something",
-                  "type": "Word"
+                  "type": "Command",
+                  "name": {
+                    "text": "fakeCommand",
+                    "type": "Word"
+                  },
+                  "suffix": [
+                    {
+                      "text": "something",
+                      "type": "Word"
+                    }
+                  ]
                 }
               ]
             }
-          ]
-        }
+          }
+        ],
+        "type": "Word"
       }
     ];
-    const fromScopeList = [{
-      'c': 'g',
-    }];
+    const state = {
+      exportedScope: {
+        'c': 'd'
+      },
+      shellScope: {
+        'a': 'b'
+      }
+    };
     let replacedText = '';
 
     beforeEach(() => {
-      bashInterpreter.mockClear();
-      bashInterpreter.mockReturnValue({interpreterOutput: 'something'});
-      replacedText = expandText(replaceableText, expansionList, fromScopeList);
+      expandCommand.mockReset();
+      replacedText = expandTextBlocks(suffixes, state);
     });
 
-    it('adds the variable to the to scope', () => {
-      expect(replacedText).toEqual('asomethingb');
+    it('calls expandCommand with the expansions and the state', () => {
+      expect(expandCommand).toBeCalledWith(suffixes[0].expansion[0], state);
     });
   });
 });

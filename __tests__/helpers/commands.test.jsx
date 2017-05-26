@@ -2,8 +2,8 @@ jest.mock('../../src/helpers/parameters');
 jest.mock('../../src/bash-interpreter');
 
 import {assignParameters, expandParameter} from '../../src/helpers/parameters';
-import {interpretCommand} from '../../src/helpers/commands';
-import {configuration} from '../../src/bash-interpreter';
+import {interpretCommand, expandCommand} from '../../src/helpers/commands';
+import {bashInterpreter, configuration} from '../../src/bash-interpreter';
 
 describe('commands', () => {
   let fakeCommand = jest.fn();
@@ -14,10 +14,128 @@ describe('commands', () => {
     fakeBash.mockReset();
     expandParameter.mockReset();
     assignParameters.mockReset();
-    configuration.functionMaps.command = {
-      'fakeCommand': fakeCommand,
-      'bash': fakeBash
+    bashInterpreter.mockReset();
+    configuration.functionMaps = {
+      command: {
+        'fakeCommand': fakeCommand
+      },
+      builtin: {
+        'bash': fakeBash
+      }
     }
+  });
+
+  describe('#expandCommand() given a command expansion', () => {
+    const expansion =
+      {
+        "loc": {
+          "start": 1,
+          "end": 24
+        },
+        "command": "fakeCommand something",
+        "type": "CommandExpansion",
+        "commandAST": {
+          "type": "Script",
+          "commands": [
+            {
+              "type": "Command",
+              "name": {
+                "text": "fakeCommand",
+                "type": "Word"
+              },
+              "suffix": [
+                {
+                  "text": "something",
+                  "type": "Word"
+                }
+              ]
+            }
+          ]
+        }
+      };
+    let replacedText = '';
+
+    beforeEach(() => {
+      bashInterpreter.mockReturnValue({
+        interpreterOutput: 'something\n'
+      });
+      replacedText = expandCommand(expansion);
+    });
+
+    it('calls the bash interpreter with the command AST for the expansion', () => {
+      expect(bashInterpreter).toBeCalledWith({
+        parserOutput: expansion.commandAST
+      })
+    });
+    it('returns a trimmed version of the interpreter output for the sub-shell command', () => {
+      expect(replacedText).toEqual('something');
+    });
+  });
+  describe('#expandCommand() given a command expansion with a variable and a state', () => {
+    const expansion = {
+      "loc": {
+        "start": 0,
+        "end": 16
+      },
+      "command": "fakeCommand $a",
+      "type": "CommandExpansion",
+      "commandAST": {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "name": {
+              "text": "fakeCommand",
+              "type": "Word"
+            },
+            "suffix": [
+              {
+                "text": "$a",
+                "expansion": [
+                  {
+                    "loc": {
+                      "start": 0,
+                      "end": 1
+                    },
+                    "parameter": "a",
+                    "type": "ParameterExpansion"
+                  }
+                ],
+                "type": "Word"
+              }
+            ]
+          }
+        ]
+      }
+    };
+
+    const state = {
+      exportedScope: {
+        'b': 'c'
+      },
+      shellScope: {
+        'd': 'e'
+      }
+    };
+
+    let replacedText = '';
+
+    beforeEach(() => {
+      bashInterpreter.mockReturnValue({
+        interpreterOutput: 'something\n'
+      });
+      replacedText = expandCommand(expansion, state);
+    });
+
+    it('calls the bash interpreter with the command AST for the expansion', () => {
+      expect(bashInterpreter).toBeCalledWith({
+        interpreterState: state,
+        parserOutput: expansion.commandAST
+      })
+    });
+    it('returns a trimmed version of the interpreter output for the sub-shell command', () => {
+      expect(replacedText).toEqual('something');
+    });
   });
 
   describe('#interpretCommand() given a command with only an assignment', () => {
@@ -108,8 +226,8 @@ describe('commands', () => {
       ]
     };
     let state = {
-      shellScope:{},
-      commandScope:{}
+      shellScope: {},
+      commandScope: {}
     };
     let output = {};
 
@@ -129,7 +247,7 @@ describe('commands', () => {
       expect(assignParameters).toBeCalledWith(command.prefix, state.shellScope, state.commandScope);
     });
     it('calls the fake command with the assigned values in its environment', () => {
-      expect(fakeCommand).toBeCalledWith({'a':'b'}, ['something']);
+      expect(fakeCommand).toBeCalledWith({'a': 'b'}, ['something']);
     });
     it('returns the output of that command', () => {
       expect(output).toEqual([{
@@ -158,8 +276,8 @@ describe('commands', () => {
       ]
     };
     let state = {
-      shellScope:{},
-      commandScope:{}
+      shellScope: {},
+      commandScope: {}
     };
     let output = {};
 
@@ -167,8 +285,8 @@ describe('commands', () => {
       output = interpretCommand(command, state);
     });
 
-    it('calls the fake bash command with the script file and its arguments', () => {
-      expect(fakeBash).toBeCalledWith({}, ['./script-file', 'something', 'else']);
+    it('calls the fake bash command (as a builtin) with the script file and its arguments', () => {
+      expect(fakeBash).toBeCalledWith(state, ['./script-file', 'something', 'else']);
     });
   });
   describe('#interpretCommand() given a command name that requires expansion', () => {
@@ -196,10 +314,10 @@ describe('commands', () => {
       ]
     };
     let state = {
-      shellScope:{
-        'script_var':'fakeCommand'
+      shellScope: {
+        'script_var': 'fakeCommand'
       },
-      commandScope:{}
+      commandScope: {}
     };
     let output = {};
 

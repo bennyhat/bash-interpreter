@@ -1,7 +1,7 @@
 import {expandParameter} from './parameters';
 import {expandCommand} from './commands';
 
-function expandText(originalText, expansionList = [], scopeList = []) {
+function expandText(originalText, expansionList = [], state) {
   let replacementAdjustment = 0;
 
   return expansionList.reduce((resultingText, expansion) => {
@@ -12,9 +12,9 @@ function expandText(originalText, expansionList = [], scopeList = []) {
 
     let expandedText = '';
     if (expansion.type === 'ParameterExpansion') {
-      expandedText = expandParameter(scopeList, expansionParameter);
+      expandedText = expandParameter(expansionParameter, state);
     } else if (expansion.type === 'CommandExpansion') {
-      expandedText = expandCommand(expansion);
+      expandedText = expandCommand(expansion, state);
     }
 
     resultingText =
@@ -30,10 +30,10 @@ function expandText(originalText, expansionList = [], scopeList = []) {
 
 function expandTextBlocks(suffixes, state) {
   return suffixes.map((suffix) => {
-    return expandText(suffix.text, suffix.expansion, [state.shellScope]);
+    return expandText(suffix.text, suffix.expansion, state);
   }).filter((expandedSuffix) => {
     return expandedSuffix !== '';
   });
 }
 
-export {expandTextBlocks};
+export {expandText, expandTextBlocks};

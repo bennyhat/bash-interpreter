@@ -1,7 +1,7 @@
 import {assignParameters, expandParameter} from '../../src/helpers/parameters';
 
 describe('parameters', () => {
-  describe('#assignParameters() given list of simple assignments and from and to scopes', () => {
+  describe('#assignParameters() given list of simple assignments, state, and type of command', () => {
     let assignmentList = [
       {
         "text": "a=b",
@@ -12,26 +12,135 @@ describe('parameters', () => {
         "type": "AssignmentWord"
       }
     ];
-    let fromScope = {
-      'c': 'z'
-    };
-    let toScope = {
-      'e': 'f'
+    let state = {
+      shellScope: {
+        'c': 'z'
+      },
+      commandScope: {
+        'e': 'f'
+      },
+      exportedScope: {
+        'g': 'h'
+      }
     };
 
     beforeEach(() => {
-      assignParameters(assignmentList, fromScope, toScope);
+      assignParameters(assignmentList, state, 'command');
     });
 
-    it('adds the variable to the to scope', () => {
-      expect(toScope).toEqual({
+    it('adds the variable to the command scope', () => {
+      expect(state.commandScope).toEqual({
         'a': 'b',
         'c': 'd',
         'e': 'f'
       });
     });
   });
-  describe('#assignParameters() given list of parameter expansion assignments and from and to scopes', () => {
+  describe('#assignParameters() given list of simple assignments, state, and type of exported', () => {
+    let assignmentList = [
+      {
+        "text": "a=b",
+        "type": "AssignmentWord"
+      },
+      {
+        "text": "c=d",
+        "type": "AssignmentWord"
+      }
+    ];
+    let state = {
+      shellScope: {
+        'c': 'z'
+      },
+      commandScope: {
+        'e': 'f'
+      },
+      exportedScope: {
+        'g': 'h'
+      }
+    };
+
+    beforeEach(() => {
+      assignParameters(assignmentList, state, 'exported');
+    });
+
+    it('adds the variable to the exported scope', () => {
+      expect(state.exportedScope).toEqual({
+        'a': 'b',
+        'c': 'd',
+        'g': 'h'
+      });
+    });
+  });
+  describe('#assignParameters() given list of simple assignments, state, and type of shell', () => {
+    let assignmentList = [
+      {
+        "text": "a=b",
+        "type": "AssignmentWord"
+      },
+      {
+        "text": "c=d",
+        "type": "AssignmentWord"
+      }
+    ];
+    let state = {
+      shellScope: {
+        'c': 'z'
+      },
+      commandScope: {
+        'e': 'f'
+      },
+      exportedScope: {
+        'g': 'h'
+      }
+    };
+
+    beforeEach(() => {
+      assignParameters(assignmentList, state, 'shell');
+    });
+
+    it('adds the variable to the shell scope', () => {
+      expect(state.shellScope).toEqual({
+        'a': 'b',
+        'c': 'd',
+      });
+    });
+  });
+  describe('#assignParameters() given list of simple assignments, state, and no type', () => {
+    let assignmentList = [
+      {
+        "text": "a=b",
+        "type": "AssignmentWord"
+      },
+      {
+        "text": "c=d",
+        "type": "AssignmentWord"
+      }
+    ];
+    let state = {
+      shellScope: {
+        'c': 'z'
+      },
+      commandScope: {
+        'e': 'f'
+      },
+      exportedScope: {
+        'g': 'h'
+      }
+    };
+
+    beforeEach(() => {
+      assignParameters(assignmentList, state);
+    });
+
+    it('adds the variable to the shell scope', () => {
+      expect(state.shellScope).toEqual({
+        'a': 'b',
+        'c': 'd',
+      });
+    });
+  });
+
+  describe('#assignParameters() given list of parameter expansion assignments, state and no type', () => {
     let assignmentList = [
       {
         "text": "a=${c}something$d",
@@ -56,26 +165,32 @@ describe('parameters', () => {
         "type": "AssignmentWord"
       }
     ];
-    let fromScope = {
-      'c': 'z',
-      'd': 'x'
-    };
-    let toScope = {
-      'e': 'f'
+    let state = {
+      shellScope: {
+        'c': 'z',
+        'd': 'x'
+      },
+      commandScope: {
+        'e': 'f'
+      },
+      exportedScope: {
+        'g': 'h'
+      }
     };
 
     beforeEach(() => {
-      assignParameters(assignmentList, fromScope, toScope);
+      assignParameters(assignmentList, state);
     });
 
-    it('adds the variable to the to scope', () => {
-      expect(toScope).toEqual({
+    it('adds the variable to the shell scope', () => {
+      expect(state.shellScope).toEqual({
         'a': 'zsomethingx',
-        'e': 'f'
+        'c': 'z',
+        'd': 'x'
       });
     });
   });
-  describe('#assignParameters() given list of multiple mixed assignments and from and to scopes', () => {
+  describe('#assignParameters() given list of multiple mixed assignments, a state and no type', () => {
     let assignmentList = [
       {
         "text": "a=something",
@@ -96,47 +211,54 @@ describe('parameters', () => {
         "type": "AssignmentWord"
       }
     ];
-    let fromScope = {
-      'c': 'z'
-    };
-    let toScope = {
-      'e': 'f'
+
+    let state = {
+      shellScope: {
+        'c': 'z',
+        'd': 'x'
+      },
+      commandScope: {
+        'e': 'f'
+      },
+      exportedScope: {
+        'g': 'h'
+      }
     };
 
     beforeEach(() => {
-      assignParameters(assignmentList, fromScope, toScope);
+      assignParameters(assignmentList, state);
     });
 
     it('adds the variable to the to scope', () => {
-      expect(toScope).toEqual({
+      expect(state.shellScope).toEqual({
         'a': 'something',
         'b': 'something',
-        'e': 'f'
+        'c': 'z',
+        'd': 'x'
       });
     });
   });
 
-  describe('#expandParameter() given a scope list and a parameter name', () => {
-
-    const scopeList = [
-      {
-        'c': 'g',
+  describe('#expandParameter() given a parameter name and a state', () => {
+    const parameterName = 'c';
+    const state = {
+      shellScope: {
+        'c': 'd',
         'd': 'h'
       },
-      {
-        'c': 'd'
+      exportedScope: {
+        'c': 'e'
       }
-    ];
-    const parameterName = 'c';
+    };
 
     let expandedParameter = '';
 
     beforeEach(() => {
-      expandedParameter = expandParameter(scopeList, parameterName);
+      expandedParameter = expandParameter(parameterName, state);
     });
 
-    it('returns the first parameter value it finds', () => {
-      expect(expandedParameter).toEqual('g');
+    it('returns the parameter out of the shell scope (exported and shell should never diverge)', () => {
+      expect(expandedParameter).toEqual('d');
     });
   });
 });
