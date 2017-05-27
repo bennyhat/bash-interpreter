@@ -176,7 +176,7 @@ describe('commands', () => {
     });
 
     it('calls the assign parameter method with the assignment and the scope', () => {
-      expect(assignParameters).toBeCalledWith(command.prefix, state.shellScope, state.shellScope);
+      expect(assignParameters).toBeCalledWith(command.prefix, state, 'shell');
     });
     it('returns a successful exit output (as multiple for compatibility)', () => {
       expect(output).toEqual([{
@@ -255,14 +255,14 @@ describe('commands', () => {
         stderr: 'stderr',
         exitCode: 1
       });
-      assignParameters.mockImplementation((assignmentList, fromScope, toScope) => {
-        toScope['a'] = 'b';
+      assignParameters.mockImplementation((assignmentList, state) => {
+        state.commandScope['a'] = 'b';
       });
       output = interpretCommand(command, state);
     });
 
     it('calls the assign parameter method with the assignment and the scope', () => {
-      expect(assignParameters).toBeCalledWith(command.prefix, state.shellScope, state.commandScope);
+      expect(assignParameters).toBeCalledWith(command.prefix, state, 'command');
     });
     it('calls the fake command with the assigned values in its environment', () => {
       expect(fakeCommand).toBeCalledWith({'a': 'b'}, ['something']);

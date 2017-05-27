@@ -18,12 +18,11 @@ function interpretCommand(command, state) {
   let prefixes = command.prefix || [];
   let suffixes = command.suffix || [];
 
-  let fromScope = state.shellScope;
-  let toScope = interpretingCommand(name) ?
-    state.commandScope :
-    state.shellScope;
+  let type = interpretingCommand(name) ?
+    'command' :
+    'shell';
 
-  assignParameters(prefixes, fromScope, toScope);
+  assignParameters(prefixes, state, type);
   return interpretingCommand(name) ?
     [executeCommand(name, suffixes, state)] :
     [{stdout: '', stderr: '', exitCode: 0}];

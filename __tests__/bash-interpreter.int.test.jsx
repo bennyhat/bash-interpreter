@@ -1,22 +1,14 @@
-jest.mock('../src/helpers/parameters');
-jest.mock('../src/helpers/expansion');
-jest.mock('../src/builtins/export');
-
 import {bashInterpreter, configuration} from "../src/bash-interpreter";
-import {assignParameters} from '../src/helpers/parameters';
-import builtinExport from '../src/builtins/export';
 
-describe('bashInterpreter', () => {
+describe('bashInterpreter integration', () => {
   let fakeCommand = jest.fn();
   let bash = jest.fn();
+  let builtinExport = jest.fn();
 
   beforeEach(() => {
-    fakeCommand.mockClear();
-    bash.mockClear();
-    assignParameters.mockReset();
-    expandText.mockClear();
-    builtinExport.mockClear();
-    expandText.mockImplementation((text) => text);
+    fakeCommand.mockReset();
+    bash.mockReset();
+    builtinExport.mockReset();
 
     bash.mockReturnValue({
       stdout: '',
@@ -28,6 +20,147 @@ describe('bashInterpreter', () => {
       'fakeCommand': fakeCommand,
       'bash': bash
     };
+    configuration.functionMaps.builtin = {
+      'export': builtinExport
+    };
+  });
+
+  describe('given a script with a fake command', () => {
+    let incomingState = {
+      parserOutput: {
+        type: "Script",
+        commands: [
+          {
+            type: "Command",
+            name: {
+              text: "fakeCommand",
+              type: "Word"
+            },
+            suffix: [
+              {
+                text: "a literal string",
+                type: "Word"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {
+          'c': 'd'
+        },
+        commandScope: {},
+        exportedScope: {
+          'y': 'z'
+        }
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      fakeCommand.mockReturnValue({
+        stdout: 'something\n',
+        stderr: 'error stuff\n',
+        exitCode: 0
+      });
+      newState = bashInterpreter(incomingState);
+    });
+    it('calls the fake command with the parts in the suffix', () => {
+      expect(fakeCommand).toBeCalledWith(incomingState.interpreterState.exportedScope, ['a literal string']);
+    });
+    it('returns the stdout of the fake command in the interpreter output (will make more sense when this streams)', () => {
+      expect(newState.interpreterOutput[0].stdout).toEqual('something\n');
+    });
+    it('returns the stderr of the fake command in the interpreter output (will make more sense when this streams)', () => {
+      expect(newState.interpreterOutput[0].stderr).toEqual('error stuff\n');
+    });
+    it('returns the exit code of the fake command in the interpreter output (will make more sense when this streams)', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(0);
+    });
+  });
+
+  describe('given a script with an assignment', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "prefix": [
+              {
+                "text": "a=b",
+                "type": "AssignmentWord"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {
+          'c': 'd'
+        },
+        commandScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = bashInterpreter(incomingState);
+    });
+    it('returns a blank stdout', () => {
+      expect(newState.interpreterOutput[0].stdout).toEqual('');
+    });
+    it('returns a blank stderr', () => {
+      expect(newState.interpreterOutput[0].stderr).toEqual('');
+    });
+    it('returns a 0 exit code', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(0);
+    });
+  });
+  describe('given a script with an assignment and command', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "name": {
+              "text": "fakeCommand",
+              "type": "Word"
+            },
+            "prefix": [
+              {
+                "text": "a=b",
+                "type": "AssignmentWord"
+              }
+            ],
+            "suffix": [
+              {
+                "text": "something",
+                "type": "Word"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {
+          'c': 'd'
+        },
+        commandScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = bashInterpreter(incomingState);
+    });
+    it('calls the fake command with whatever was expanded from the suffix', () => {
+      expect(fakeCommand).toBeCalledWith({'a':'b'}, ['something']);
+    });
   });
 
   describe('given a script with an assignment and command with parameter expansion', () => {
@@ -95,13 +228,6 @@ describe('bashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
-      assignParameters.mockImplementation((ignoredAssignments, ignoredFromScope, toScope) => toScope['a'] = 'b');
-      expandText
-        .mockReturnValueOnce('fakeCommand')
-        .mockReturnValueOnce('something')
-        .mockReturnValueOnce('')
-        .mockReturnValueOnce('d');
-
       newState = bashInterpreter(incomingState);
     });
 
@@ -202,13 +328,6 @@ describe('bashInterpreter', () => {
         stderr: 'fake stderr',
         exitCode: 1
       });
-      assignParameters.mockImplementation((assignmentList = [], ignoredFromScope, toScope) => {
-        if (assignmentList.length > 0) {
-          toScope['a'] = 'asvalue'
-        }
-      });
-      expandText.mockReturnValueOnce('fakeCommand')
-        .mockReturnValueOnce('asvalue');
       newState = bashInterpreter(incomingState);
     });
 
@@ -256,14 +375,6 @@ describe('bashInterpreter', () => {
 
     beforeEach(() => {
       fakeCommand.mockReturnValue({stdout: 'something\n'});
-      assignParameters.mockImplementation((assignmentList = [], ignoredFromScope, toScope) => {
-        if (assignmentList.length > 0) {
-          toScope['a'] = 'asvalue'
-        }
-      });
-      expandText
-        .mockReturnValueOnce('fakeCommand')
-        .mockReturnValueOnce('asvalue');
 
       newState = bashInterpreter(incomingState);
       newState.parserOutput = {
@@ -302,6 +413,129 @@ describe('bashInterpreter', () => {
     });
   });
 
+  describe('given a command containing a slash', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "name": {
+              "text": "./script-file",
+              "type": "Word"
+            }
+          }
+        ]
+      },
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {
+          'a': 'b'
+        }
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = bashInterpreter(incomingState);
+    });
+
+    it('runs that file through the bash command', () => {
+      expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file']);
+    });
+  });
+  describe('given a command containing a slash and arguments', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "name": {
+              "text": "./script-file",
+              "type": "Word"
+            },
+            "suffix": [
+              {
+                "text": "something",
+                "type": "Word"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {
+          'a': 'b'
+        }
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = bashInterpreter(incomingState);
+    });
+
+    it('runs that file through the bash command and passes it that argument', () => {
+      expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file', 'something']);
+    });
+  });
+  describe('given a command containing a slash that comes from expansion', () => {
+    let incomingState = {
+      parserOutput: {
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Command",
+            "name": {
+              "text": "${script_var}",
+              "expansion": [
+                {
+                  "loc": {
+                    "start": 0,
+                    "end": 12
+                  },
+                  "parameter": "script_var",
+                  "type": "ParameterExpansion"
+                }
+              ],
+              "type": "Word"
+            },
+            "suffix": [
+              {
+                "text": "something",
+                "type": "Word"
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        shellScope: {
+          'script_var': './script-file'
+        },
+        commandScope: {},
+        exportedScope: {
+          'a': 'b'
+        }
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      newState = bashInterpreter(incomingState);
+    });
+
+    it('runs that file through the bash command and passes it that argument', () => {
+      expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file', 'something']);
+    });
+  });
   describe('given multiple commands that are "AND"ed together', () => {
     let incomingState = {
       parserOutput: {
@@ -366,7 +600,6 @@ describe('bashInterpreter', () => {
     let newState = {};
 
     beforeEach(() => {
-      fakeCommand.mockClear();
       fakeCommand.mockReset();
       fakeCommand
         .mockReturnValueOnce({

@@ -6,7 +6,7 @@ function interpretLogicalExpression(expression, state) {
   let rightCommand = expression.right;
   let operation = expression.op;
 
-  let leftCommandOutput = flattenArray(configuration.commandTypeMap[leftCommand.type](leftCommand));
+  let leftCommandOutput = flattenArray(configuration.commandTypeMap[leftCommand.type](leftCommand, state));
   if (leftCommandOutput[leftCommandOutput.length - 1].exitCode !== 0 &&
     operation === 'and') return leftCommandOutput;
   let rightCommandOutput = flattenArray(configuration.commandTypeMap[rightCommand.type](rightCommand, state));
