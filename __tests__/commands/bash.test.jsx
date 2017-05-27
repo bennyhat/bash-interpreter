@@ -17,14 +17,22 @@ describe('bash', () => {
     fakeCommand.mockClear();
   });
 
-  describe('given an environment scope, and no arguments', () => {
-    let environment = {
-      'a': 'b'
+  describe('given a state, and no arguments', () => {
+    let state = {
+      shellScope: {
+        'a': 'b'
+      },
+      commandScope: {
+        'c': 'd'
+      },
+      exportedScope: {
+        'e': 'f'
+      }
     };
     let output = {};
 
     beforeEach(() => {
-      output = bash(environment, []);
+      output = bash(state, []);
     });
 
     it('returns stderr indicating how to use this command', () => {
@@ -39,8 +47,16 @@ describe('bash', () => {
     });
   });
   describe('given an environment scope, and a script file that fails to read/parse/interpret, etc.', () => {
-    let environment = {
-      'a': 'b'
+    let state = {
+      shellScope: {
+        'a': 'b'
+      },
+      commandScope: {
+        'c': 'd'
+      },
+      exportedScope: {
+        'e': 'f'
+      }
     };
     let output = {};
 
@@ -48,7 +64,7 @@ describe('bash', () => {
       fs.readFileSync.mockImplementation(() => {
         throw 'file not found'
       });
-      output = bash(environment, ['script-file']);
+      output = bash(state, ['script-file']);
     });
 
     it('returns text indicating that the file was not found/or read', () => {
@@ -63,8 +79,21 @@ describe('bash', () => {
     });
   });
   describe('given an environment scope, a script file, and a list of arguments', () => {
-    let environment = {
-      'a': 'b'
+    let state = {
+      shellScope: {
+        'a': 'b',
+        'c': 'f',
+        'd': 'e',
+        'x': 'z'
+      },
+      commandScope: {
+        'c': 'd'
+      },
+      exportedScope: {
+        'a': 'b',
+        'c': 'f',
+        'd': 'e'
+      }
     };
 
     let scriptFileContents = 'fakeCommand something';
@@ -108,7 +137,7 @@ describe('bash', () => {
         }
       });
 
-      output = bash(environment, ['script-file', 'arg1', 'arg2']);
+      output = bash(state, ['script-file', 'arg1', 'arg2']);
     });
 
     it('reads from the file, then parses and interprets the contents', () => {
@@ -121,29 +150,50 @@ describe('bash', () => {
       expect(output.exitCode).toEqual(1);
     });
 
-    it('passes the environment and arguments into the interpreter as shell scope', () => {
+    it('passes the combined scopes and argument into the interpreter as shell and exported scopes', () => {
       expect(bashInterpreter).toBeCalledWith({
         parserOutput: parsedScriptFileContents,
         interpreterState: {
+          exportedScope: {
+            'a': 'b',
+            'c': 'd',
+            'd': 'e'
+          },
           shellScope: {
             'a': 'b',
+            'c': 'd',
+            'd': 'e',
             '0': 'script-file',
             '1': 'arg1',
             '2': 'arg2'
-          }
+          },
+          commandScope: {}
         }
       });
     });
   });
   describe('given an environment scope, a -c argument nothing else', () => {
-    let environment = {
-      'a': 'b'
+    let state = {
+      shellScope: {
+        'a': 'b',
+        'c': 'f',
+        'd': 'e',
+        'x': 'z'
+      },
+      commandScope: {
+        'c': 'd'
+      },
+      exportedScope: {
+        'a': 'b',
+        'c': 'f',
+        'd': 'e'
+      }
     };
 
     let output = {};
 
     beforeEach(() => {
-      output = bash(environment, ['-c']);
+      output = bash(state, ['-c']);
     });
 
     it('returns text indicating proper usage of the command', () => {
@@ -158,8 +208,21 @@ describe('bash', () => {
     });
   });
   describe('given an environment scope, a -c argument and a script in string form', () => {
-    let environment = {
-      'a': 'b'
+    let state = {
+      shellScope: {
+        'a': 'b',
+        'c': 'f',
+        'd': 'e',
+        'x': 'z'
+      },
+      commandScope: {
+        'c': 'd'
+      },
+      exportedScope: {
+        'a': 'b',
+        'c': 'f',
+        'd': 'e'
+      }
     };
 
     let parsedScriptString = {
@@ -201,7 +264,7 @@ describe('bash', () => {
         }
       });
 
-      output = bash(environment, ['-c', 'fakeCommand something']);
+      output = bash(state, ['-c', 'fakeCommand something']);
     });
 
     it('parses the script string and interprets the contents', () => {
@@ -218,23 +281,44 @@ describe('bash', () => {
       expect(bashInterpreter).toBeCalledWith({
         parserOutput: parsedScriptString,
         interpreterState: {
+          exportedScope: {
+            'a': 'b',
+            'c': 'd',
+            'd': 'e'
+          },
           shellScope: {
             'a': 'b',
+            'c': 'd',
+            'd': 'e',
             '0': 'bash'
-          }
+          },
+          commandScope: {}
         }
       });
     });
   });
   describe('given an environment scope, and any other flags as the first parameter', () => {
-    let environment = {
-      'a': 'b'
+    let state = {
+      shellScope: {
+        'a': 'b',
+        'c': 'f',
+        'd': 'e',
+        'x': 'z'
+      },
+      commandScope: {
+        'c': 'd'
+      },
+      exportedScope: {
+        'a': 'b',
+        'c': 'f',
+        'd': 'e'
+      }
     };
 
     let output = {};
 
     beforeEach(() => {
-      output = bash(environment, ['-d']);
+      output = bash(state, ['-d']);
     });
 
     it('returns text indicating proper usage of the command', () => {
