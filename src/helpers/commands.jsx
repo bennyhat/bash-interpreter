@@ -19,8 +19,8 @@ function interpretCommand(command, state) {
   let suffixes = command.suffix || [];
 
   let type = interpretingCommand(name) ?
-    'command' :
-    'shell';
+    'commandScope' :
+    'shellScope';
 
   assignParameters(prefixes, state, type);
   return interpretingCommand(name) ?

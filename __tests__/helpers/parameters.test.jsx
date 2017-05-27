@@ -26,7 +26,7 @@ describe('parameters', () => {
     };
 
     beforeEach(() => {
-      assignParameters(assignmentList, state, 'command');
+      assignParameters(assignmentList, state, 'commandScope');
     });
 
     it('adds the variable to the command scope', () => {
@@ -62,7 +62,7 @@ describe('parameters', () => {
     };
 
     beforeEach(() => {
-      assignParameters(assignmentList, state, 'exported');
+      assignParameters(assignmentList, state, 'exportedScope');
     });
 
     it('adds the variable to the exported scope', () => {
@@ -98,7 +98,7 @@ describe('parameters', () => {
     };
 
     beforeEach(() => {
-      assignParameters(assignmentList, state, 'shell');
+      assignParameters(assignmentList, state, 'shellScope');
     });
 
     it('adds the variable to the shell scope', () => {

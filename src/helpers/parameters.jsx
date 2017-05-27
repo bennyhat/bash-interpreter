@@ -1,19 +1,7 @@
 import {expandText} from './expansion';
 
-const typeMap = {
-  command: (state) => {
-    return state.commandScope;
-  },
-  exported: (state) => {
-    return state.exportedScope
-  },
-  shell: (state) => {
-    return state.shellScope
-  }
-};
-
-function assignParameters(assignmentList = [], state, type = 'shell') {
-  let toScope = typeMap[type](state);
+function assignParameters(assignmentList = [], state, type = 'shellScope') {
+  let toScope = state[type];
 
   assignmentList.forEach((assignment) => {
     const expandedText = expandText(

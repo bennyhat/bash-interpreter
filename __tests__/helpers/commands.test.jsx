@@ -176,7 +176,7 @@ describe('commands', () => {
     });
 
     it('calls the assign parameter method with the assignment and the scope', () => {
-      expect(assignParameters).toBeCalledWith(command.prefix, state, 'shell');
+      expect(assignParameters).toBeCalledWith(command.prefix, state, 'shellScope');
     });
     it('returns a successful exit output (as multiple for compatibility)', () => {
       expect(output).toEqual([{
@@ -262,7 +262,7 @@ describe('commands', () => {
     });
 
     it('calls the assign parameter method with the assignment and the scope', () => {
-      expect(assignParameters).toBeCalledWith(command.prefix, state, 'command');
+      expect(assignParameters).toBeCalledWith(command.prefix, state, 'commandScope');
     });
     it('calls the fake command with the assigned values in its environment', () => {
       expect(fakeCommand).toBeCalledWith({'a': 'b'}, ['something']);

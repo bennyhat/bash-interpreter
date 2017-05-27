@@ -2,7 +2,7 @@ jest.mock('../../src/helpers/fs');
 jest.mock('bash-parser');
 jest.mock('../../src/bash-interpreter');
 
-import bash from '../../src/commands/bash';
+import bash from '../../src/builtins/bash';
 import fs from '../../src/helpers/fs';
 import bashParser from 'bash-parser';
 import bashInterpreter from '../../src/bash-interpreter';
