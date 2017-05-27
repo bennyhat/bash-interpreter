@@ -14,7 +14,8 @@ describe('parameters', () => {
     ];
     let state = {
       shellScope: {
-        'c': 'z'
+        'c': 'z',
+        'x': 'f'
       },
       commandScope: {
         'e': 'f'
@@ -49,7 +50,8 @@ describe('parameters', () => {
     ];
     let state = {
       shellScope: {
-        'c': 'z'
+        'c': 'z',
+        'x': 'f'
       },
       commandScope: {
         'e': 'f'
@@ -84,7 +86,8 @@ describe('parameters', () => {
     ];
     let state = {
       shellScope: {
-        'c': 'z'
+        'c': 'z',
+        'x': 'f'
       },
       commandScope: {
         'e': 'f'
@@ -102,6 +105,7 @@ describe('parameters', () => {
       expect(state.shellScope).toEqual({
         'a': 'b',
         'c': 'd',
+        'x': 'f'
       });
     });
   });
@@ -118,7 +122,8 @@ describe('parameters', () => {
     ];
     let state = {
       shellScope: {
-        'c': 'z'
+        'c': 'z',
+        'x': 'f'
       },
       commandScope: {
         'e': 'f'
@@ -136,6 +141,7 @@ describe('parameters', () => {
       expect(state.shellScope).toEqual({
         'a': 'b',
         'c': 'd',
+        'x': 'f'
       });
     });
   });

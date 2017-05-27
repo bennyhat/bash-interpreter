@@ -13,7 +13,6 @@ const typeMap = {
 };
 
 function assignParameters(assignmentList = [], state, type = 'shell') {
-  let fromScope = state.shellScope;
   let toScope = typeMap[type](state);
 
   assignmentList.forEach((assignment) => {
@@ -27,8 +26,7 @@ function assignParameters(assignmentList = [], state, type = 'shell') {
     const name = splitText[0];
     const value = splitText[1];
 
-    Object.assign(toScope, fromScope, {[name]: value});
-    Object.assign(toScope, fromScope, {[name]: value});
+    Object.assign(toScope, {[name]: value});
   });
 }
 

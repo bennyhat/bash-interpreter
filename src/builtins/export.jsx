@@ -7,13 +7,12 @@ export default function builtinExport(incomingState, parameterList) {
   });
   assignParameters(
     assignmentList,
-    incomingState.shellScope,
-    incomingState.exportedScope
+    incomingState,
+    'exported'
   );
   assignParameters(
     assignmentList,
-    incomingState.shellScope,
-    incomingState.shellScope
+    incomingState
   );
   return {
     stderr:'',
