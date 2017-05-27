@@ -171,6 +171,9 @@ describe('bash', () => {
         }
       });
     });
+    it('does not mutate the state that was passed in', () => {
+      expect(state.commandScope).not.toEqual({});
+    });
   });
   describe('given an environment scope, a -c argument nothing else', () => {
     let state = {

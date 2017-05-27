@@ -1,10 +1,12 @@
 import {bashInterpreter, configuration} from '../bash-interpreter';
 import {assignParameters} from './parameters';
 import {expandTextBlocks} from './expansion';
+import {copyAndMergeState} from './state';
 
 function expandCommand(expansion, state) {
+  let subShellInterpreterState = copyAndMergeState(state);
   let subShellInputState = {
-    interpreterState: state,
+    interpreterState: subShellInterpreterState,
     parserOutput: expansion.commandAST
   };
   let subShellOutputState = bashInterpreter(subShellInputState);

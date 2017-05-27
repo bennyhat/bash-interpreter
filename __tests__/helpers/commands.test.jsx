@@ -53,19 +53,37 @@ describe('commands', () => {
           ]
         }
       };
+
+    const state = {
+      exportedScope: {
+        'b': 'c'
+      },
+      shellScope: {
+        'd': 'e'
+      }
+    };
     let replacedText = '';
+    let passedState = {};
 
     beforeEach(() => {
-      bashInterpreter.mockReturnValue({
-        interpreterOutput: 'something\n'
+      bashInterpreter.mockImplementation((state) => {
+        passedState = state.interpreterState;
+        return {
+          interpreterOutput: 'something\n'
+        };
       });
-      replacedText = expandCommand(expansion);
+      replacedText = expandCommand(expansion, state);
     });
 
     it('calls the bash interpreter with the command AST for the expansion', () => {
       expect(bashInterpreter).toBeCalledWith({
+        interpreterState: state,
         parserOutput: expansion.commandAST
       })
+    });
+    it('passes a copy of the state into the interpreter', () => {
+      expect(passedState).toEqual(state);
+      expect(passedState === state).toEqual(false);
     });
     it('returns a trimmed version of the interpreter output for the sub-shell command', () => {
       expect(replacedText).toEqual('something');
