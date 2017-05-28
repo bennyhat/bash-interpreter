@@ -17,7 +17,7 @@ describe('bash', () => {
     fakeCommand.mockClear();
   });
 
-  describe('given a state, and no arguments', () => {
+  describe('given a state, file descriptors, and no arguments', () => {
     let state = {
       shellScope: {
         'a': 'b'
@@ -46,7 +46,7 @@ describe('bash', () => {
       expect(output.exitCode).toBeDefined();
     });
   });
-  describe('given an environment scope, and a script file that fails to read/parse/interpret, etc.', () => {
+  describe('given a state, file descriptors, and a script file that fails to read/parse/interpret, etc.', () => {
     let state = {
       shellScope: {
         'a': 'b'
@@ -78,7 +78,7 @@ describe('bash', () => {
       expect(output.exitCode).toBeDefined();
     });
   });
-  describe('given an environment scope, a script file, and a list of arguments', () => {
+  describe('given a state, file descriptors, a script file, and a list of arguments', () => {
     let state = {
       shellScope: {
         'a': 'b',
@@ -115,6 +115,27 @@ describe('bash', () => {
         }
       ]
     };
+    let interpreterInput = {
+      "type": "Script",
+      "commands": [
+        {
+          "type": "Command",
+          "fileDescriptors": {
+            "stdin": "something"
+          },
+          "name": {
+            "text": "fakeCommand",
+            "type": "Word"
+          },
+          "suffix": [
+            {
+              "text": "something",
+              "type": "Word"
+            }
+          ]
+        }
+      ]
+    };
 
     let output = {};
 
@@ -137,7 +158,7 @@ describe('bash', () => {
         }
       });
 
-      output = bash(state, {}, ['script-file', 'arg1', 'arg2']);
+      output = bash(state, {stdin: 'something'}, ['script-file', 'arg1', 'arg2']);
     });
 
     it('reads from the file, then parses and interprets the contents', () => {
@@ -152,7 +173,7 @@ describe('bash', () => {
 
     it('passes the combined scopes and argument into the interpreter as shell and exported scopes', () => {
       expect(bashInterpreter).toBeCalledWith({
-        parserOutput: parsedScriptFileContents,
+        parserOutput: interpreterInput,
         interpreterState: {
           exportedScope: {
             'a': 'b',
@@ -175,7 +196,7 @@ describe('bash', () => {
       expect(state.commandScope).not.toEqual({});
     });
   });
-  describe('given an environment scope, a -c argument nothing else', () => {
+  describe('given a state, file descriptors, a -c argument nothing else', () => {
     let state = {
       shellScope: {
         'a': 'b',
@@ -210,7 +231,7 @@ describe('bash', () => {
       expect(output.exitCode).toBeDefined();
     });
   });
-  describe('given an environment scope, a -c argument and a script in string form', () => {
+  describe('given a state, file descriptors, a -c argument and a script in string form', () => {
     let state = {
       shellScope: {
         'a': 'b',
@@ -246,6 +267,27 @@ describe('bash', () => {
         }
       ]
     };
+    let interpreterInput = {
+      "type": "Script",
+      "commands": [
+        {
+          "type": "Command",
+          "fileDescriptors": {
+            "stdin": "something"
+          },
+          "name": {
+            "text": "fakeCommand",
+            "type": "Word"
+          },
+          "suffix": [
+            {
+              "text": "something",
+              "type": "Word"
+            }
+          ]
+        }
+      ]
+    };
 
     let output = {};
 
@@ -267,7 +309,7 @@ describe('bash', () => {
         }
       });
 
-      output = bash(state, {}, ['-c', 'fakeCommand something']);
+      output = bash(state, {stdin:'something'}, ['-c', 'fakeCommand something']);
     });
 
     it('parses the script string and interprets the contents', () => {
@@ -282,7 +324,7 @@ describe('bash', () => {
 
     it('passes the environment and arguments into the interpreter as shell scope', () => {
       expect(bashInterpreter).toBeCalledWith({
-        parserOutput: parsedScriptString,
+        parserOutput: interpreterInput,
         interpreterState: {
           exportedScope: {
             'a': 'b',
@@ -300,7 +342,7 @@ describe('bash', () => {
       });
     });
   });
-  describe('given an environment scope, and any other flags as the first parameter', () => {
+  describe('given a state, file descriptors, and any other flags as the first parameter', () => {
     let state = {
       shellScope: {
         'a': 'b',

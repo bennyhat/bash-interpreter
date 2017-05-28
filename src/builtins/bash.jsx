@@ -60,6 +60,8 @@ export default function bash(state, fileDescriptors, parameterList = []) {
     const scriptContent = extractScriptContent(parameterList);
     let parsedOutput = bashParser(scriptContent);
 
+    parsedOutput.commands[0].fileDescriptors = fileDescriptors;
+
     let incomingState = {
       parserOutput: parsedOutput,
       interpreterState: generateInterpreterState(state, parameterList)
