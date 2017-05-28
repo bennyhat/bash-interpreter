@@ -10,7 +10,7 @@ function interpretLogicalExpression(expression, state) {
   if (leftCommandOutput[leftCommandOutput.length - 1].exitCode !== 0 &&
     operation === 'and') return leftCommandOutput;
   let rightCommandOutput = flattenArray(configuration.commandTypeMap[rightCommand.type](rightCommand, state));
-  return [leftCommandOutput, rightCommandOutput];
+  return flattenArray([leftCommandOutput, rightCommandOutput]);
 }
 
 export {interpretLogicalExpression};

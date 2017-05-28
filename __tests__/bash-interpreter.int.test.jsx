@@ -17,11 +17,11 @@ describe('bashInterpreter integration', () => {
     });
 
     configuration.functionMaps.command = {
-      'fakeCommand': fakeCommand,
-      'bash': bash
+      'fakeCommand': fakeCommand
     };
     configuration.functionMaps.builtin = {
-      'export': builtinExport
+      'export': builtinExport,
+      'bash': bash
     };
   });
 
@@ -443,7 +443,7 @@ describe('bashInterpreter integration', () => {
     });
 
     it('runs that file through the bash command', () => {
-      expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file']);
+      expect(bash).toBeCalledWith({"commandScope": {}, "exportedScope": {"a": "b"}, "shellScope": {}}, ['./script-file']);
     });
   });
   describe('given a command containing a slash and arguments', () => {
@@ -482,7 +482,7 @@ describe('bashInterpreter integration', () => {
     });
 
     it('runs that file through the bash command and passes it that argument', () => {
-      expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file', 'something']);
+      expect(bash).toBeCalledWith({"commandScope": {}, "exportedScope": {"a": "b"}, "shellScope": {}}, ['./script-file', 'something']);
     });
   });
   describe('given a command containing a slash that comes from expansion', () => {
@@ -533,9 +533,10 @@ describe('bashInterpreter integration', () => {
     });
 
     it('runs that file through the bash command and passes it that argument', () => {
-      expect(bash).toBeCalledWith({'a': 'b'}, ['./script-file', 'something']);
+      expect(bash).toBeCalledWith({"commandScope": {}, "exportedScope": {"a": "b"}, "shellScope": {"script_var": "./script-file"}}, ['./script-file', 'something']);
     });
   });
+
   describe('given multiple commands that are "AND"ed together', () => {
     let incomingState = {
       parserOutput: {
