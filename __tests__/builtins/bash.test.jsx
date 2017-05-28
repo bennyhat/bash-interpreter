@@ -32,7 +32,7 @@ describe('bash', () => {
     let output = {};
 
     beforeEach(() => {
-      output = bash(state, []);
+      output = bash(state, {}, []);
     });
 
     it('returns stderr indicating how to use this command', () => {
@@ -64,7 +64,7 @@ describe('bash', () => {
       fs.readFileSync.mockImplementation(() => {
         throw 'file not found'
       });
-      output = bash(state, ['script-file']);
+      output = bash(state, {}, ['script-file']);
     });
 
     it('returns text indicating that the file was not found/or read', () => {
@@ -137,7 +137,7 @@ describe('bash', () => {
         }
       });
 
-      output = bash(state, ['script-file', 'arg1', 'arg2']);
+      output = bash(state, {}, ['script-file', 'arg1', 'arg2']);
     });
 
     it('reads from the file, then parses and interprets the contents', () => {
@@ -196,7 +196,7 @@ describe('bash', () => {
     let output = {};
 
     beforeEach(() => {
-      output = bash(state, ['-c']);
+      output = bash(state, {}, ['-c']);
     });
 
     it('returns text indicating proper usage of the command', () => {
@@ -267,7 +267,7 @@ describe('bash', () => {
         }
       });
 
-      output = bash(state, ['-c', 'fakeCommand something']);
+      output = bash(state, {}, ['-c', 'fakeCommand something']);
     });
 
     it('parses the script string and interprets the contents', () => {
@@ -321,7 +321,7 @@ describe('bash', () => {
     let output = {};
 
     beforeEach(() => {
-      output = bash(state, ['-d']);
+      output = bash(state, {}, ['-d']);
     });
 
     it('returns text indicating proper usage of the command', () => {

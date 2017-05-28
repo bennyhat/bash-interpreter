@@ -13,7 +13,7 @@ describe('builtinExport', () => {
     let output = {};
 
     beforeEach(() => {
-      output = builtinExport(incomingState, ['a=b']);
+      output = builtinExport(incomingState, {stdin: ''}, ['a=b']);
     });
 
     it('adds the variable to the exported scope', () => {
@@ -28,7 +28,7 @@ describe('builtinExport', () => {
         'd': 'e'
       });
     });
-    it('returns a successful output', ()=> {
+    it('returns a successful output', () => {
       expect(output).toEqual({
         stdout: '',
         stderr: '',

@@ -1,6 +1,6 @@
 import {assignParameters} from '../helpers/parameters';
 
-export default function builtinExport(incomingState, parameterList) {
+export default function builtinExport(incomingState, fileDescriptors, parameterList) {
   const assignmentList = parameterList.map((parameter) => {
     return {text: parameter};
   });

@@ -48,7 +48,7 @@ function generateInterpreterState(state, parameterList) {
   return interpreterState;
 }
 
-export default function bash(state, parameterList = []) {
+export default function bash(state, fileDescriptors, parameterList = []) {
   if (!validateParameterList(parameterList))
     return {
       stderr: 'USAGE: bash [option] script-file\n\toption:\n\t\t-c \'command string\'',
