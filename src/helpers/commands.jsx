@@ -3,14 +3,17 @@ import {assignParameters} from './parameters';
 import {expandTextBlocks} from './expansion';
 import {copyAndMergeState} from './state';
 
+export {expandCommand, interpretCommand};
+
 function expandCommand(expansion, state) {
   let subShellInterpreterState = copyAndMergeState(state);
+  expansion.commandAST.commands[0].fileDescriptors = expansion.fileDescriptors;
   let subShellInputState = {
     interpreterState: subShellInterpreterState,
     parserOutput: expansion.commandAST
   };
   let subShellOutputState = bashInterpreter(subShellInputState);
-  return subShellOutputState.interpreterOutput.trim();
+  return subShellOutputState.interpreterOutput[0].stdout.trim();
 }
 
 function interpretCommand(command, state) {
@@ -26,9 +29,12 @@ function interpretCommand(command, state) {
 }
 
 function executeCommand(command, state) {
-  let commandName = expandTextBlocks([command.name], state)[0];
-  let commandFileDescriptors = command.fileDescriptors || {};
-  let commandArguments = expandTextBlocks(command.suffix || [], state);
+  let expandedCommand = expandTextBlocks(command, state);
+  let commandName = expandedCommand.name.text;
+  let commandFileDescriptors = expandedCommand.fileDescriptors || {};
+  let commandArguments = expandedCommand.suffix.map((suffix) => {
+    return suffix.text;
+  });
 
   if (commandName.includes('/')) {
     commandArguments.unshift(commandName);
@@ -72,5 +78,3 @@ function getDefaultCommandScope(state) {
 function interpretingCommand(name) {
   return typeof name === 'object';
 }
-
-export {expandCommand, interpretCommand};

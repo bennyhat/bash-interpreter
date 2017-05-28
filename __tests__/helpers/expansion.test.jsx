@@ -1,57 +1,94 @@
-jest.mock('../../src/helpers/commands');
-jest.mock('../../src/helpers/parameters');
-import {expandCommand} from '../../src/helpers/commands';
-import {expandParameter} from '../../src/helpers/parameters';
-import {expandTextBlocks} from '../../src/helpers/expansion'
+import {configuration} from '../../src/bash-interpreter';
+import {expandTextBlocks} from '../../src/helpers/expansion';
 
 describe('expansion', () => {
-  describe('#expandTextBlocks() given text with replaceable tokens, a parameter expansion list and an interpreter state', () => {
-    const suffixes = [
+  let fakeCommand = jest.fn();
+  beforeEach(() => {
+    fakeCommand.mockReset();
+    configuration.functionMaps.command = {
+      'fakeCommand': fakeCommand
+    }
+  });
+
+  describe('#expandTextBlocks() given a command with parameter expansions, and an interpreter state', () => {
+    const command =
       {
-        "text": "${c}something$d",
-        "expansion": [
+        "type": "Command",
+        "name": {
+          "text": "$command_var",
+          "expansion": [
+            {
+              "loc": {
+                "start": 0,
+                "end": 11
+              },
+              "parameter": "command_var",
+              "type": "ParameterExpansion"
+            }
+          ],
+          "type": "Word"
+        },
+        "suffix": [
           {
-            "loc": {
-              "start": 0,
-              "end": 3
-            },
-            "parameter": "c",
-            "type": "ParameterExpansion"
-          },
-          {
-            "loc": {
-              "start": 13,
-              "end": 14
-            },
-            "parameter": "d",
-            "type": "ParameterExpansion"
+            "text": "${c}something$d",
+            "expansion": [
+              {
+                "loc": {
+                  "start": 0,
+                  "end": 3
+                },
+                "parameter": "c",
+                "type": "ParameterExpansion"
+              },
+              {
+                "loc": {
+                  "start": 13,
+                  "end": 14
+                },
+                "parameter": "d",
+                "type": "ParameterExpansion"
+              }
+            ],
+            "type": "Word"
           }
-        ],
-        "type": "Word"
-      }
-    ];
+        ]
+      };
     const state = {
-      commandScope: {
+      shellScope: {
+        'command_var': 'expandedCommand',
         'c': 'g',
         'd': 'h'
       }
     };
-    let replacedText = '';
+    let expandedCommand = '';
 
     beforeEach(() => {
-      replacedText = expandTextBlocks(suffixes, state);
+      expandedCommand = expandTextBlocks(command, state);
     });
 
-    it('calls the expandParameter function with the first expansion parameter and the state', () => {
-      expect(expandParameter).toBeCalledWith('c', state);
-    });
-    it('calls the expandParameter function with the second expansion parameter and the state', () => {
-      expect(expandParameter).toBeCalledWith('d', state);
+    it('returns a command that has expansions replace with literals', () => {
+      expect(expandedCommand).toEqual({
+        "type": "Command",
+        "name": {
+          "text": "expandedCommand",
+          "type": "Word"
+        },
+        "suffix": [
+          {
+            "text": "gsomethingh",
+            "type": "Word"
+          }
+        ]
+      });
     });
   });
-  describe('#expandTextBlocks() given text with replaceable tokens, a command expansion list and an interpreter state', () => {
-    const suffixes = [
-      {
+  describe('#expandTextBlocks() given a command with command expansions, and an interpreter state', () => {
+    const command = {
+      "type": "Command",
+      "fileDescriptors": {
+        "stdin": "some stdin"
+      },
+      "name": {
         "text": "$(fakeCommand something)",
         "expansion": [
           {
@@ -72,7 +109,7 @@ describe('expansion', () => {
                   },
                   "suffix": [
                     {
-                      "text": "something",
+                      "text": "namey",
                       "type": "Word"
                     }
                   ]
@@ -82,25 +119,196 @@ describe('expansion', () => {
           }
         ],
         "type": "Word"
-      }
-    ];
-    const state = {
-      exportedScope: {
-        'c': 'd'
       },
+      "suffix": [
+        {
+          "text": "$(fakeCommand something)",
+          "expansion": [
+            {
+              "loc": {
+                "start": 0,
+                "end": 23
+              },
+              "command": "fakeCommand something",
+              "type": "CommandExpansion",
+              "commandAST": {
+                "type": "Script",
+                "commands": [
+                  {
+                    "type": "Command",
+                    "name": {
+                      "text": "fakeCommand",
+                      "type": "Word"
+                    },
+                    "suffix": [
+                      {
+                        "text": "something",
+                        "type": "Word"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "Word"
+        }
+      ]
+    };
+    const state = {
       shellScope: {
-        'a': 'b'
+        'c': 'g',
+        'd': 'h'
       }
     };
-    let replacedText = '';
+    let expandedCommand = '';
 
     beforeEach(() => {
-      expandCommand.mockReset();
-      replacedText = expandTextBlocks(suffixes, state);
+      fakeCommand.mockReturnValueOnce({
+        stdout: 'fakeCommand',
+        stderr: '',
+        exitCode: 0
+      });
+      fakeCommand.mockReturnValueOnce({
+        stdout: 'other thing\n',
+        stderr: '',
+        exitCode: 0
+      });
+      expandedCommand = expandTextBlocks(command, state);
     });
 
-    it('calls expandCommand with the expansions and the state', () => {
-      expect(expandCommand).toBeCalledWith(suffixes[0].expansion[0], state);
+    it('returns a command that has expansions replace with literals', () => {
+      expect(expandedCommand).toEqual({
+        "type": "Command",
+        "fileDescriptors": {},
+        "name": {
+          "text": "fakeCommand",
+          "type": "Word"
+        },
+        "suffix": [
+          {
+            "text": "other thing",
+            "type": "Word"
+          }
+        ]
+      });
+    });
+    it('passes the stdin of the command to command name expansion command', () => {
+      expect(fakeCommand).toBeCalledWith({}, {stdin: "some stdin"}, ['namey']);
+    });
+    it('passes no file descriptors to the suffix expansion command', () => {
+      expect(fakeCommand).toBeCalledWith({}, {}, ['something']);
+    });
+  });
+  describe('#expandTextBlocks() given a command with command suffix expansion only, and an interpreter state', () => {
+    const command = {
+      "type": "Command",
+      "fileDescriptors": {
+        "stdin": "some stdin"
+      },
+      "name": {
+        "text": "fakeCommand",
+        "type": "Word"
+      },
+      "suffix": [
+        {
+          "text": "$(fakeCommand something)$(fakeCommand something)",
+          "expansion": [
+            {
+              "loc": {
+                "start": 0,
+                "end": 23
+              },
+              "command": "fakeCommand something",
+              "type": "CommandExpansion",
+              "commandAST": {
+                "type": "Script",
+                "commands": [
+                  {
+                    "type": "Command",
+                    "name": {
+                      "text": "fakeCommand",
+                      "type": "Word"
+                    },
+                    "suffix": [
+                      {
+                        "text": "something",
+                        "type": "Word"
+                      }
+                    ]
+                  }
+                ]
+              }
+            },
+            {
+              "loc": {
+                "start": 24,
+                "end": 47
+              },
+              "command": "fakeCommand something",
+              "type": "CommandExpansion",
+              "commandAST": {
+                "type": "Script",
+                "commands": [
+                  {
+                    "type": "Command",
+                    "name": {
+                      "text": "fakeCommand",
+                      "type": "Word"
+                    },
+                    "suffix": [
+                      {
+                        "text": "something",
+                        "type": "Word"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          ],
+          "type": "Word"
+        }
+      ]
+    };
+    const state = {
+      shellScope: {
+        'c': 'g',
+        'd': 'h'
+      }
+    };
+    let expandedCommand = '';
+
+    beforeEach(() => {
+      fakeCommand.mockReturnValue({
+        stdout: 'other thing\n',
+        stderr: '',
+        exitCode: 0
+      });
+      expandedCommand = expandTextBlocks(command, state);
+    });
+
+    it('returns a command that has expansions replace with literals', () => {
+      expect(expandedCommand).toEqual({
+        "type": "Command",
+        "fileDescriptors": {},
+        "name": {
+          "text": "fakeCommand",
+          "type": "Word"
+        },
+        "suffix": [
+          {
+            "text": "other thingother thing",
+            "type": "Word"
+          }
+        ]
+      });
+    });
+    it('passes the stdin of the command to the first suffix expansion command', () => {
+      expect(fakeCommand).toBeCalledWith({}, {stdin: "some stdin"}, ['something']);
+    });
+    it('passes no stdin to the command in the second suffix expansion command', () => {
+      expect(fakeCommand).toBeCalledWith({}, {}, ['something']);
     });
   });
 });
