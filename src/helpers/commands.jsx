@@ -15,22 +15,20 @@ function expandCommand(expansion, state) {
 
 function interpretCommand(command, state) {
   let name = command.name;
-  let prefixes = command.prefix || [];
-  let suffixes = command.suffix || [];
-
-  let type = interpretingCommand(name) ?
+  let type = interpretingCommand(command.name) ?
     'commandScope' :
     'shellScope';
 
-  assignParameters(prefixes, state, type);
+  assignParameters(command.prefix || [], state, type);
   return interpretingCommand(name) ?
-    [executeCommand(name, suffixes, state)] :
+    [executeCommand(command, state)] :
     [{stdout: '', stderr: '', exitCode: 0}];
 }
 
-function executeCommand(name, suffixes, state) {
-  let commandName = expandTextBlocks([name], state)[0];
-  let commandArguments = expandTextBlocks(suffixes, state);
+function executeCommand(command, state) {
+  let commandName = expandTextBlocks([command.name], state)[0];
+  let commandFileDescriptors = command.fileDescriptors || {};
+  let commandArguments = expandTextBlocks(command.suffix || [], state);
 
   if (commandName.includes('/')) {
     commandArguments.unshift(commandName);
@@ -38,19 +36,19 @@ function executeCommand(name, suffixes, state) {
   }
 
   const commandFunction = getCommandFunction(commandName, state);
-  return commandFunction(commandArguments);
+  return commandFunction(commandFileDescriptors, commandArguments);
 }
 
 function getCommandFunction(name, state) {
   let commandType = findCommandType(name);
   let commandFunction = findCommandFunction(commandType, name);
 
-  return function commandFunctionWrapper(argumentList) {
+  return function commandFunctionWrapper(fileDescriptors, argumentList) {
     if (commandType === 'builtin') {
-      return commandFunction(state, argumentList);
+      return commandFunction(state, fileDescriptors, argumentList);
     }
     else {
-      return commandFunction(getDefaultCommandScope(state), argumentList);
+      return commandFunction(getDefaultCommandScope(state), fileDescriptors, argumentList);
     }
   };
 }

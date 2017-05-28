@@ -193,6 +193,9 @@ describe('commands', () => {
         text: "fakeCommand",
         type: "Word"
       },
+      fileDescriptors: {
+        "stdin": "something else"
+      },
       suffix: [
         {
           text: "a literal string",
@@ -213,7 +216,7 @@ describe('commands', () => {
     });
 
     it('calls the fake command', () => {
-      expect(fakeCommand).toBeCalledWith({}, ['a literal string']);
+      expect(fakeCommand).toBeCalledWith({}, command.fileDescriptors, ['a literal string']);
     });
     it('returns the output of that command', () => {
       expect(output).toEqual([{
@@ -265,7 +268,7 @@ describe('commands', () => {
       expect(assignParameters).toBeCalledWith(command.prefix, state, 'commandScope');
     });
     it('calls the fake command with the assigned values in its environment', () => {
-      expect(fakeCommand).toBeCalledWith({'a': 'b'}, ['something']);
+      expect(fakeCommand).toBeCalledWith({'a': 'b'}, {}, ['something']);
     });
     it('returns the output of that command', () => {
       expect(output).toEqual([{
@@ -304,7 +307,7 @@ describe('commands', () => {
     });
 
     it('calls the fake bash command (as a builtin) with the script file and its arguments', () => {
-      expect(fakeBash).toBeCalledWith(state, ['./script-file', 'something', 'else']);
+      expect(fakeBash).toBeCalledWith(state, {}, ['./script-file', 'something', 'else']);
     });
   });
   describe('#interpretCommand() given a command name that requires expansion', () => {
@@ -345,7 +348,7 @@ describe('commands', () => {
     });
 
     it('calls the fake command that comes from the expansion', () => {
-      expect(fakeCommand).toBeCalledWith({}, ['something']);
+      expect(fakeCommand).toBeCalledWith({}, {}, ['something']);
     });
   });
 });
