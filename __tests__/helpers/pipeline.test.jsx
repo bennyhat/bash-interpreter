@@ -59,9 +59,7 @@ describe('pipeline', () => {
       ]
     };
     const state = {
-      fileDescriptors: {
-        stdin: []
-      },
+      fileDescriptors: {},
       exportedScope: {
         'c': 'g',
         'd': 'h'
@@ -71,6 +69,8 @@ describe('pipeline', () => {
     let calledStdIns = [];
 
     beforeEach(() => {
+      calledStdIns = [];
+      state.fileDescriptors = {stdin: ['stdin from somewhere']};
       fakeSubShell.mockImplementation((subShell, state) => {
         calledStdIns.push(state.fileDescriptors.stdin);
         return [{
@@ -104,8 +104,9 @@ describe('pipeline', () => {
         }
       ]);
     });
-    it('passes an empty stdin to the first command', () => {
-      expect(calledStdIns[0].shift()).toEqual(undefined);
+    it('passes a reference to the outside stdin to the first command', () => {
+      expect(calledStdIns[0].shift()).toEqual('stdin from somewhere');
+      expect(state.fileDescriptors.stdin).toEqual([]);
     });
     it('passes the stdout of the first command into the second command', () => {
       expect(calledStdIns[1].shift()).toEqual('first stdout');
@@ -113,8 +114,8 @@ describe('pipeline', () => {
     it('passes the stdout of the second command into the third command', () => {
       expect(calledStdIns[2].shift()).toEqual('second stdout');
     });
-    it('leaves the stdin as the stdout of the third command in case this command has further piping', () => {
-      expect(state.fileDescriptors.stdin.shift()).toEqual('third stdout');
+    it('does NOT mutate the value of the passed stdin at all (sub-shells can, but not it)', () => {
+      expect(state.fileDescriptors.stdin).toEqual(['stdin from somewhere']);
     });
     it('passes the commands through a sub-shell', () => {
       expect(fakeSubShell).toBeCalledWith(
@@ -127,7 +128,15 @@ describe('pipeline', () => {
             ]
           }
         },
-        state);
+        {
+          fileDescriptors: {
+            stdin: ['stdin from somewhere']
+          },
+          exportedScope: {
+            'c': 'g',
+            'd': 'h'
+          }
+        });
       expect(fakeSubShell).toBeCalledWith(
         {
           "type": "Subshell",
@@ -138,7 +147,15 @@ describe('pipeline', () => {
             ]
           }
         },
-        state);
+        {
+          fileDescriptors: {
+            stdin: ['first stdout']
+          },
+          exportedScope: {
+            'c': 'g',
+            'd': 'h'
+          }
+        });
       expect(fakeSubShell).toBeCalledWith(
         {
           "type": "Subshell",
@@ -149,7 +166,15 @@ describe('pipeline', () => {
             ]
           }
         },
-        state);
+        {
+          fileDescriptors: {
+            stdin: ['second stdout']
+          },
+          exportedScope: {
+            'c': 'g',
+            'd': 'h'
+          }
+        });
     });
   });
   describe('#interpretPipeline() given pipeline of sub-shells', () => {

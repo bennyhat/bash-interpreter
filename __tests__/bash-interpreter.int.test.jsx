@@ -1,6 +1,5 @@
 import {bashInterpreter, configuration} from "../src/bash-interpreter";
 
-// TODO - make stdin (or all fds) clear after each command
 describe('bashInterpreter integration', () => {
   let fakeCommand = jest.fn();
   let bash = jest.fn();
