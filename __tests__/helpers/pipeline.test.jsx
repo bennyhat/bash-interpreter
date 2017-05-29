@@ -1,6 +1,7 @@
 import {configuration} from '../../src/bash-interpreter';
 import {interpretPipeline} from '../../src/helpers/pipeline';
 
+// TODO - make pipelines deal with multiple output
 describe('pipeline', () => {
   let fakeCommand = jest.fn();
   let fakeSubShell = jest.fn();

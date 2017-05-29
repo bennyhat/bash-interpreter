@@ -5,6 +5,7 @@ import {assignParameters, expandParameter} from '../../src/helpers/parameters';
 import {interpretCommand, expandCommand} from '../../src/helpers/commands';
 import {bashInterpreter, configuration} from '../../src/bash-interpreter';
 
+// TODO - make command expansion deal with multiple outputs
 describe('commands', () => {
   let fakeCommand = jest.fn();
   let fakeSubShell = jest.fn();
@@ -68,11 +69,11 @@ describe('commands', () => {
     let replacedText = '';
 
     beforeEach(() => {
-      fakeSubShell.mockReturnValue({
+      fakeSubShell.mockReturnValue([{
         stdout: 'something',
         stderr: '',
         exitCode: 0
-      });
+      }]);
       replacedText = expandCommand(expansion, state);
     });
     it('calls a sub-shell with the commands in the commandAST ', () => {
@@ -141,11 +142,11 @@ describe('commands', () => {
     let replacedText = '';
 
     beforeEach(() => {
-      fakeSubShell.mockReturnValue({
+      fakeSubShell.mockReturnValue([{
         stdout: 'something',
         stderr: '',
         exitCode: 0
-      });
+      }]);
       replacedText = expandCommand(expansion, state);
     });
 
