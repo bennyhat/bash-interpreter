@@ -5,16 +5,17 @@ jest.mock('../../src/bash-interpreter');
 import bash from '../../src/builtins/bash';
 import fs from '../../src/helpers/fs';
 import bashParser from 'bash-parser';
-import bashInterpreter from '../../src/bash-interpreter';
+import {configuration} from '../../src/bash-interpreter';
 
 describe('bash', () => {
-  let fakeCommand = jest.fn();
+  let fakeSubShell = jest.fn();
 
   beforeEach(() => {
-    fs.readFileSync.mockClear();
-    bashParser.mockClear();
-    bashInterpreter.mockClear();
-    fakeCommand.mockClear();
+    fakeSubShell.mockReset();
+    fs.readFileSync.mockReset();
+    bashParser.mockReset();
+
+    configuration.commandTypeMap.Subshell = fakeSubShell;
   });
 
   describe('given a state, and no arguments', () => {
@@ -80,6 +81,9 @@ describe('bash', () => {
   });
   describe('given an environment scope, a script file, and a list of arguments', () => {
     let state = {
+      fileDescriptors: {
+        stdin: ['something']
+      },
       shellScope: {
         'a': 'b',
         'c': 'f',
@@ -117,6 +121,7 @@ describe('bash', () => {
     };
 
     let output = {};
+    let passedState = {};
 
     beforeEach(() => {
       fs.readFileSync.mockReturnValue(scriptFileContents);
@@ -125,35 +130,40 @@ describe('bash', () => {
           return parsedScriptFileContents;
         }
       });
-      bashInterpreter.mockImplementation((incomingState) => {
-        if (incomingState.parserOutput === parsedScriptFileContents) {
-          return {
-            interpreterOutput: {
-              stdout: '',
-              stderr: 'error',
-              exitCode: 1
-            }
-          };
-        }
+      fakeSubShell.mockImplementation((subShell, state) => {
+        passedState = state;
+        return [{
+          stdout: '',
+          stderr: 'error',
+          exitCode: 1
+        }]
       });
 
       output = bash(state, ['script-file', 'arg1', 'arg2']);
     });
 
     it('reads from the file, then parses and interprets the contents', () => {
-      expect(output.stdout).toEqual('');
+      expect(output[0].stdout).toEqual('');
     });
     it('returns nothing to stdout', () => {
-      expect(output.stderr).toEqual('error');
+      expect(output[0].stderr).toEqual('error');
     });
     it('returns a non-zero exit code', () => {
-      expect(output.exitCode).toEqual(1);
+      expect(output[0].exitCode).toEqual(1);
     });
-
-    it('passes the combined scopes and argument into the interpreter as shell and exported scopes', () => {
-      expect(bashInterpreter).toBeCalledWith({
-        parserOutput: parsedScriptFileContents,
-        interpreterState: {
+    it('passes the combined scopes and argument into a sub-shell as the state', () => {
+      expect(fakeSubShell).toBeCalledWith(
+        {
+          "type": "Subshell",
+          "list": {
+            "type": "CompoundList",
+            "commands": parsedScriptFileContents.commands
+          }
+        },
+        {
+          fileDescriptors: {
+            stdin: ['something']
+          },
           exportedScope: {
             'a': 'b',
             'c': 'd',
@@ -168,11 +178,13 @@ describe('bash', () => {
             '2': 'arg2'
           },
           commandScope: {}
-        }
-      });
+        });
     });
     it('does not mutate the state that was passed in', () => {
       expect(state.commandScope).not.toEqual({});
+    });
+    it('passes the global file descriptors to the sub-shell', () => {
+      expect(passedState.fileDescriptors === state.fileDescriptors).toEqual(true);
     });
   });
   describe('given an environment scope, a -c argument nothing else', () => {
@@ -212,6 +224,9 @@ describe('bash', () => {
   });
   describe('given an environment scope, a -c argument and a script in string form', () => {
     let state = {
+      fileDescriptors: {
+        stdin: ['something']
+      },
       shellScope: {
         'a': 'b',
         'c': 'f',
@@ -248,6 +263,7 @@ describe('bash', () => {
     };
 
     let output = {};
+    let passedState = {};
 
     beforeEach(() => {
       bashParser.mockImplementation((script) => {
@@ -255,35 +271,42 @@ describe('bash', () => {
           return parsedScriptString;
         }
       });
-      bashInterpreter.mockImplementation((incomingState) => {
-        if (incomingState.parserOutput === parsedScriptString) {
-          return {
-            interpreterOutput: {
-              stdout: 'something\n',
-              stderr: '',
-              exitCode: 0
-            }
-          };
-        }
+
+      fakeSubShell.mockImplementation((subShell, state) => {
+        passedState = state;
+        return [{
+          stdout: 'something\n',
+          stderr: '',
+          exitCode: 0
+        }]
       });
 
       output = bash(state, ['-c', 'fakeCommand something']);
     });
 
     it('parses the script string and interprets the contents', () => {
-      expect(output.stdout).toEqual('something\n');
+      expect(output[0].stdout).toEqual('something\n');
     });
     it('returns nothing to stdout', () => {
-      expect(output.stderr).toEqual('');
+      expect(output[0].stderr).toEqual('');
     });
     it('returns a non-zero exit code', () => {
-      expect(output.exitCode).toEqual(0);
+      expect(output[0].exitCode).toEqual(0);
     });
 
-    it('passes the environment and arguments into the interpreter as shell scope', () => {
-      expect(bashInterpreter).toBeCalledWith({
-        parserOutput: parsedScriptString,
-        interpreterState: {
+    it('passes the environment and arguments into the subshell', () => {
+      expect(fakeSubShell).toBeCalledWith(
+        {
+          "type": "Subshell",
+          "list": {
+            "type": "CompoundList",
+            "commands": parsedScriptString.commands
+          }
+        },
+        {
+          fileDescriptors: {
+            stdin: ['something']
+          },
           exportedScope: {
             'a': 'b',
             'c': 'd',
@@ -297,7 +320,13 @@ describe('bash', () => {
           },
           commandScope: {}
         }
-      });
+      );
+    });
+    it('does not mutate the state that was passed in', () => {
+      expect(state.commandScope).not.toEqual({});
+    });
+    it('passes the global file descriptors to the sub-shell', () => {
+      expect(passedState.fileDescriptors === state.fileDescriptors).toEqual(true);
     });
   });
   describe('given an environment scope, and any other flags as the first parameter', () => {

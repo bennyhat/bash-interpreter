@@ -1,6 +1,6 @@
 import fs from '../helpers/fs'
 import bashParser from 'bash-parser';
-import bashInterpreter from '../bash-interpreter';
+import {configuration, bashInterpreter} from '../bash-interpreter';
 import {copyAndMergeState} from '../helpers/state';
 
 function validateParameterList(parameterList) {
@@ -37,10 +37,11 @@ function generateParameterState(parameterList) {
   }, {});
 }
 
-function generateInterpreterState(state, parameterList) {
+function generateSubShellState(state, parameterList) {
   let parameterState = generateParameterState(parameterList);
   let interpreterState = copyAndMergeState(state);
 
+  interpreterState.fileDescriptors = state.fileDescriptors;
   interpreterState.exportedScope = copyAndMergeState(interpreterState.exportedScope, interpreterState.commandScope);
   interpreterState.shellScope = copyAndMergeState(parameterState, interpreterState.exportedScope);
   interpreterState.commandScope = {};
@@ -60,11 +61,16 @@ export default function bash(state, parameterList = []) {
     const scriptContent = extractScriptContent(parameterList);
     let parsedOutput = bashParser(scriptContent);
 
-    let incomingState = {
-      parserOutput: parsedOutput,
-      interpreterState: generateInterpreterState(state, parameterList)
+    let subShelledCommand = {
+      "type": "Subshell",
+      "list": {
+        "type": "CompoundList",
+        "commands": parsedOutput.commands
+      }
     };
-    return bashInterpreter(incomingState).interpreterOutput;
+
+    let subShelledState = generateSubShellState(state, parameterList);
+    return configuration.commandTypeMap[subShelledCommand.type](subShelledCommand, subShelledState);
   }
   catch (exception) {
     return {
