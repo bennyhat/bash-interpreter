@@ -1,14 +1,14 @@
 import {configuration} from '../../src/bash-interpreter';
 import {interpretPipeline} from '../../src/helpers/pipeline';
-import BlockFile from '../../src/helpers/block-file';
 
-// TODO - tests to make sure that commands only get a copy of the state (really, need to implement sub-shell first)
 describe('pipeline', () => {
   let fakeCommand = jest.fn();
+  let fakeSubShell = jest.fn();
 
   beforeEach(() => {
     fakeCommand.mockReset();
     configuration.commandTypeMap.Command = fakeCommand;
+    configuration.commandTypeMap.Subshell = fakeSubShell;
   });
 
   describe('#interpretPipeline() given pipeline of commands', () => {
@@ -58,7 +58,7 @@ describe('pipeline', () => {
     };
     const state = {
       fileDescriptors: {
-        stdin: new BlockFile()
+        stdin: []
       },
       exportedScope: {
         'c': 'g',
@@ -69,11 +69,11 @@ describe('pipeline', () => {
     let calledStdIns = [];
 
     beforeEach(() => {
-      fakeCommand.mockImplementation((command, state) => {
+      fakeSubShell.mockImplementation((subShell, state) => {
         calledStdIns.push(state.fileDescriptors.stdin);
         return [{
-          stdout: `${command.suffix[0].text} stdout`,
-          stderr: `${command.suffix[0].text} stderr`,
+          stdout: `${subShell.list.commands[0].suffix[0].text} stdout`,
+          stderr: `${subShell.list.commands[0].suffix[0].text} stderr`,
           exitCode: 0
         }];
       });
@@ -81,7 +81,7 @@ describe('pipeline', () => {
     });
 
     it('calls the command three times', () => {
-      expect(fakeCommand).toHaveBeenCalledTimes(3);
+      expect(fakeSubShell).toHaveBeenCalledTimes(3);
     });
     it('returns the output of all the commands', () => {
       expect(output).toEqual([
@@ -103,16 +103,130 @@ describe('pipeline', () => {
       ]);
     });
     it('passes an empty stdin to the first command', () => {
-      expect(calledStdIns[0].read()).toEqual(null);
+      expect(calledStdIns[0].shift()).toEqual(undefined);
     });
     it('passes the stdout of the first command into the second command', () => {
-      expect(calledStdIns[1].read()).toEqual('first stdout');
+      expect(calledStdIns[1].shift()).toEqual('first stdout');
     });
     it('passes the stdout of the second command into the third command', () => {
-      expect(calledStdIns[2].read()).toEqual('second stdout');
+      expect(calledStdIns[2].shift()).toEqual('second stdout');
     });
     it('leaves the stdin as the stdout of the third command in case this command has further piping', () => {
-      expect(state.fileDescriptors.stdin.read()).toEqual('third stdout');
+      expect(state.fileDescriptors.stdin.shift()).toEqual('third stdout');
+    });
+    it('passes the commands through a sub-shell', () => {
+      expect(fakeSubShell).toBeCalledWith(
+        {
+          "type": "Subshell",
+          "list": {
+            "type": "CompoundList",
+            "commands": [
+              pipeline.commands[0]
+            ]
+          }
+        },
+        state);
+      expect(fakeSubShell).toBeCalledWith(
+        {
+          "type": "Subshell",
+          "list": {
+            "type": "CompoundList",
+            "commands": [
+              pipeline.commands[1]
+            ]
+          }
+        },
+        state);
+      expect(fakeSubShell).toBeCalledWith(
+        {
+          "type": "Subshell",
+          "list": {
+            "type": "CompoundList",
+            "commands": [
+              pipeline.commands[2]
+            ]
+          }
+        },
+        state);
+    });
+  });
+  describe('#interpretPipeline() given pipeline of sub-shells', () => {
+    const pipeline = {
+      "type": "Pipeline",
+      "commands": [
+        {
+          "type": "Subshell",
+          "list": {
+            "type": "CompoundList",
+            "commands": [
+              {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "type": "Subshell",
+          "list": {
+            "type": "CompoundList",
+            "commands": [
+              {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "something",
+                    "type": "Word"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    };
+    const state = {
+      fileDescriptors: {
+        stdin: []
+      },
+      exportedScope: {
+        'c': 'g',
+        'd': 'h'
+      }
+    };
+    let output = {};
+
+    beforeEach(() => {
+      fakeSubShell.mockReturnValue([{
+        stdout: 'stdout',
+        stderr: 'stderr',
+        exitCode: 0
+      }]);
+      output = interpretPipeline(pipeline, state);
+    });
+
+    it('does not wrap sub-shells in sub-shells', () => {
+      expect(fakeSubShell).toBeCalledWith(
+        pipeline.commands[0],
+        state
+      );
+      expect(fakeSubShell).toBeCalledWith(
+        pipeline.commands[1],
+        state
+      );
     });
   });
 });
