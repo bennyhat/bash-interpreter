@@ -7,14 +7,17 @@ import {bashInterpreter, configuration} from '../../src/bash-interpreter';
 
 describe('commands', () => {
   let fakeCommand = jest.fn();
+  let fakeSubShell = jest.fn();
   let fakeBash = jest.fn();
 
   beforeEach(() => {
     fakeCommand.mockReset();
     fakeBash.mockReset();
+    fakeSubShell.mockReset();
     expandParameter.mockReset();
     assignParameters.mockReset();
     bashInterpreter.mockReset();
+    configuration.commandTypeMap.Subshell = fakeSubShell;
     configuration.functionMaps = {
       command: {
         'fakeCommand': fakeCommand
@@ -63,29 +66,28 @@ describe('commands', () => {
       }
     };
     let replacedText = '';
-    let passedState = {};
 
     beforeEach(() => {
-      bashInterpreter.mockImplementation((state) => {
-        passedState = state.interpreterState;
-        return {
-          interpreterOutput: 'something\n'
-        };
+      fakeSubShell.mockReturnValue({
+        stdout: 'something',
+        stderr: '',
+        exitCode: 0
       });
       replacedText = expandCommand(expansion, state);
     });
-
-    it('calls the bash interpreter with the command AST for the expansion', () => {
-      expect(bashInterpreter).toBeCalledWith({
-        interpreterState: state,
-        parserOutput: expansion.commandAST
-      })
+    it('calls a sub-shell with the commands in the commandAST ', () => {
+      expect(fakeSubShell).toBeCalledWith(
+        {
+          "type": "Subshell",
+          "list": {
+            "type": "CompoundList",
+            "commands": expansion.commandAST.commands
+          }
+        },
+        state
+      )
     });
-    it('passes a copy of the state into the interpreter', () => {
-      expect(passedState).toEqual(state);
-      expect(passedState === state).toEqual(false);
-    });
-    it('returns a trimmed version of the interpreter output for the sub-shell command', () => {
+    it('returns a trimmed version of the sub-shell output for the sub-shell command', () => {
       expect(replacedText).toEqual('something');
     });
   });
@@ -139,19 +141,27 @@ describe('commands', () => {
     let replacedText = '';
 
     beforeEach(() => {
-      bashInterpreter.mockReturnValue({
-        interpreterOutput: 'something\n'
+      fakeSubShell.mockReturnValue({
+        stdout: 'something',
+        stderr: '',
+        exitCode: 0
       });
       replacedText = expandCommand(expansion, state);
     });
 
-    it('calls the bash interpreter with the command AST for the expansion', () => {
-      expect(bashInterpreter).toBeCalledWith({
-        interpreterState: state,
-        parserOutput: expansion.commandAST
-      })
+    it('calls a sub-shell with the commands in the commandAST ', () => {
+      expect(fakeSubShell).toBeCalledWith(
+        {
+          "type": "Subshell",
+          "list": {
+            "type": "CompoundList",
+            "commands": expansion.commandAST.commands
+          }
+        },
+        state
+      )
     });
-    it('returns a trimmed version of the interpreter output for the sub-shell command', () => {
+    it('returns a trimmed version of the sub-shell output for the sub-shell command', () => {
       expect(replacedText).toEqual('something');
     });
   });
@@ -200,7 +210,11 @@ describe('commands', () => {
         }
       ]
     };
-    let state = {};
+    let state = {
+      fileDescriptors: {
+        stdin: ['something']
+      }
+    };
     let output = {};
 
     beforeEach(() => {
@@ -212,8 +226,8 @@ describe('commands', () => {
       output = interpretCommand(command, state);
     });
 
-    it('calls the fake command', () => {
-      expect(fakeCommand).toBeCalledWith({}, ['a literal string']);
+    it('calls the fake command with env, fds, and args', () => {
+      expect(fakeCommand).toBeCalledWith({}, state.fileDescriptors, ['a literal string']);
     });
     it('returns the output of that command', () => {
       expect(output).toEqual([{
@@ -244,6 +258,9 @@ describe('commands', () => {
       ]
     };
     let state = {
+      fileDescriptors: {
+        stdin: ['something']
+      },
       shellScope: {},
       commandScope: {}
     };
@@ -265,7 +282,7 @@ describe('commands', () => {
       expect(assignParameters).toBeCalledWith(command.prefix, state, 'commandScope');
     });
     it('calls the fake command with the assigned values in its environment', () => {
-      expect(fakeCommand).toBeCalledWith({'a': 'b'}, ['something']);
+      expect(fakeCommand).toBeCalledWith({'a': 'b'}, state.fileDescriptors, ['something']);
     });
     it('returns the output of that command', () => {
       expect(output).toEqual([{
@@ -294,6 +311,9 @@ describe('commands', () => {
       ]
     };
     let state = {
+      fileDescriptors: {
+        stdin: ['something']
+      },
       shellScope: {},
       commandScope: {}
     };
@@ -332,6 +352,9 @@ describe('commands', () => {
       ]
     };
     let state = {
+      fileDescriptors: {
+        stdin: ['something']
+      },
       shellScope: {
         'script_var': 'fakeCommand'
       },
@@ -345,7 +368,7 @@ describe('commands', () => {
     });
 
     it('calls the fake command that comes from the expansion', () => {
-      expect(fakeCommand).toBeCalledWith({}, ['something']);
+      expect(fakeCommand).toBeCalledWith({}, state.fileDescriptors, ['something']);
     });
   });
 });

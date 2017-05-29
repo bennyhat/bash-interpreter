@@ -7,6 +7,7 @@ describe('pipeline', () => {
 
   beforeEach(() => {
     fakeCommand.mockReset();
+    fakeSubShell.mockReset();
     configuration.commandTypeMap.Command = fakeCommand;
     configuration.commandTypeMap.Subshell = fakeSubShell;
   });

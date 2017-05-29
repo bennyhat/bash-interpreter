@@ -1,16 +1,17 @@
-import {bashInterpreter, configuration} from '../bash-interpreter';
-import {assignParameters} from './parameters';
-import {expandTextBlocks} from './expansion';
-import {copyAndMergeState} from './state';
+import {configuration} from "../bash-interpreter";
+import {assignParameters} from "./parameters";
+import {expandTextBlocks} from "./expansion";
 
 function expandCommand(expansion, state) {
-  let subShellInterpreterState = copyAndMergeState(state);
-  let subShellInputState = {
-    interpreterState: subShellInterpreterState,
-    parserOutput: expansion.commandAST
+  let subShelledCommand = {
+    "type": "Subshell",
+    "list": {
+      "type": "CompoundList",
+      "commands": expansion.commandAST.commands
+    }
   };
-  let subShellOutputState = bashInterpreter(subShellInputState);
-  return subShellOutputState.interpreterOutput.trim();
+  let subShellOutput = configuration.commandTypeMap[subShelledCommand.type](subShelledCommand, state);
+  return subShellOutput.stdout.trim();
 }
 
 function interpretCommand(command, state) {
@@ -50,7 +51,7 @@ function getCommandFunction(name, state) {
       return commandFunction(state, argumentList);
     }
     else {
-      return commandFunction(getDefaultCommandScope(state), argumentList);
+      return commandFunction(getDefaultCommandScope(state), state.fileDescriptors, argumentList);
     }
   };
 }
