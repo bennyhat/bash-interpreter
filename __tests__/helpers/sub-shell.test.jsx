@@ -57,5 +57,9 @@ describe('subShell', () => {
     it('sends a copy of the state to the command in the sub-shell', () => {
       expect(state === statePassedToCommand).toEqual(false);
     });
+
+    it('sends a reference to each file descriptor in the state', () => {
+      expect(state.fileDescriptors === statePassedToCommand.fileDescriptors).toEqual(true);
+    });
   });
 });
