@@ -71,7 +71,7 @@ describe('commands', () => {
     beforeEach(() => {
       fakeSubShell.mockReturnValue([{
         stdout: 'something',
-        stderr: '',
+        stderr: 'error',
         exitCode: 0
       }]);
       replacedText = expandCommand(expansion, state);
@@ -89,7 +89,7 @@ describe('commands', () => {
       )
     });
     it('returns a trimmed version of the sub-shell output for the sub-shell command', () => {
-      expect(replacedText).toEqual('something');
+      expect(replacedText).toEqual('something error');
     });
   });
   describe('#expandCommand() given a command expansion with a variable and a state', () => {
@@ -144,7 +144,7 @@ describe('commands', () => {
     beforeEach(() => {
       fakeSubShell.mockReturnValue([{
         stdout: 'something',
-        stderr: '',
+        stderr: 'error',
         exitCode: 0
       }]);
       replacedText = expandCommand(expansion, state);
@@ -163,7 +163,7 @@ describe('commands', () => {
       )
     });
     it('returns a trimmed version of the sub-shell output for the sub-shell command', () => {
-      expect(replacedText).toEqual('something');
+      expect(replacedText).toEqual('something error');
     });
   });
 

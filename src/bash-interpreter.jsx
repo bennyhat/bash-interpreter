@@ -1,6 +1,8 @@
 import {copyAndMergeState, flattenArray} from './helpers/state';
 import {interpretCommand} from './helpers/commands'
 import {interpretLogicalExpression} from './helpers/logical-expression'
+import {interpretPipeline} from './helpers/pipeline'
+import {interpretSubShell} from './helpers/sub-shell'
 import builtinCommands from './builtins';
 import commands from './commands';
 
@@ -11,7 +13,9 @@ let configuration = {
   },
   commandTypeMap: {
     Command: interpretCommand,
-    LogicalExpression: interpretLogicalExpression
+    LogicalExpression: interpretLogicalExpression,
+    Pipeline: interpretPipeline,
+    Subshell: interpretSubShell
   }
 };
 

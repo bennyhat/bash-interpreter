@@ -1,5 +1,6 @@
 import {bashInterpreter, configuration} from "../src/bash-interpreter";
 
+// TODO - add at least one test for sub-shell alone
 describe('bashInterpreter integration', () => {
   let fakeCommand = jest.fn();
   let bash = jest.fn();
@@ -86,7 +87,6 @@ describe('bashInterpreter integration', () => {
       expect(newState.interpreterOutput[0].exitCode).toEqual(0);
     });
   });
-
   describe('given a script with an assignment', () => {
     let incomingState = {
       parserOutput: {
@@ -172,7 +172,6 @@ describe('bashInterpreter integration', () => {
       expect(fakeCommand).toBeCalledWith({'a':'b'}, incomingState.interpreterState.fileDescriptors, ['something']);
     });
   });
-
   describe('given a script with an assignment and command with parameter expansion', () => {
     let incomingState = {
       parserOutput: {
@@ -943,6 +942,110 @@ describe('bashInterpreter integration', () => {
     });
     it('calls the fake command three times',()=> {
       expect(fakeCommand).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  describe('given multiple commands that are pipelined together', () => {
+    let incomingState = {
+      parserOutput:{
+        "type": "Script",
+        "commands": [
+          {
+            "type": "Pipeline",
+            "commands": [
+              {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "one",
+                    "type": "Word"
+                  }
+                ]
+              },
+              {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "two",
+                    "type": "Word"
+                  }
+                ]
+              },
+              {
+                "type": "Command",
+                "name": {
+                  "text": "fakeCommand",
+                  "type": "Word"
+                },
+                "suffix": [
+                  {
+                    "text": "three",
+                    "type": "Word"
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      interpreterOutputPrintable: false,
+      interpreterState: {
+        fileDescriptors: {
+          stdin: ['zero']
+        },
+        shellScope: {},
+        commandScope: {},
+        exportedScope: {}
+      }
+    };
+    let newState = {};
+
+    beforeEach(() => {
+      fakeCommand.mockClear();
+      fakeCommand.mockReset();
+      fakeCommand
+        .mockReturnValueOnce({
+          stdout: 'one',
+          stderr: '',
+          exitCode: 1
+        })
+        .mockReturnValueOnce({
+          stdout: '',
+          stderr: 'two',
+          exitCode: 1
+        })
+        .mockReturnValueOnce({
+          stdout: 'three',
+          stderr: '',
+          exitCode: 0
+        });
+      newState = bashInterpreter(incomingState);
+    });
+    it('returns the stderr or stdout for all commands', () => {
+      expect(newState.interpreterOutput[0].stdout).toEqual('one');
+      expect(newState.interpreterOutput[1].stderr).toEqual('two');
+      expect(newState.interpreterOutput[2].stdout).toEqual('three');
+    });
+    it('returns the exit codes for all commands', () => {
+      expect(newState.interpreterOutput[0].exitCode).toEqual(1);
+      expect(newState.interpreterOutput[1].exitCode).toEqual(1);
+      expect(newState.interpreterOutput[2].exitCode).toEqual(0);
+    });
+    it('calls the fake command three times',()=> {
+      expect(fakeCommand).toHaveBeenCalledTimes(3);
+    });
+    it('calls the fake command with appropriate stdin',()=> {
+      expect(fakeCommand).toBeCalledWith({}, {stdin:['zero']}, ['one']);
+      expect(fakeCommand).toBeCalledWith({}, {stdin:['one']}, ['two']);
+      expect(fakeCommand).toBeCalledWith({}, {stdin:[]}, ['three']);
     });
   });
 });

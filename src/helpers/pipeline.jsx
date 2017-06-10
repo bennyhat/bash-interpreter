@@ -19,11 +19,16 @@ function interpretPipeline(pipeline, state) {
         }
       };
 
-    let output = configuration.commandTypeMap[subShelledCommand.type](subShelledCommand, subShelledState);
+    let outputList = flattenArray(configuration.commandTypeMap[subShelledCommand.type](subShelledCommand, subShelledState));
+    let output = flattenArray(outputList.map((output) => {
+      return output.stdout;
+    })).filter((output) => {
+      return output !== '';
+    });
+
     subShelledState = copyAndMergeState(state);
-    subShelledState.fileDescriptors.stdin = [];
-    subShelledState.fileDescriptors.stdin.push(output[output.length - 1].stdout);
-    return output;
+    subShelledState.fileDescriptors.stdin = output;
+    return outputList;
   }));
 }
 

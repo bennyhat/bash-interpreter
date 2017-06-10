@@ -46,6 +46,11 @@ describe('subShell', () => {
     beforeEach(() => {
       fakeCommand.mockImplementation((command, state) => {
         statePassedToCommand = state;
+        return [{
+          stdout: 'stdout',
+          stderr: 'stderr',
+          exitCode: 0
+        }];
       });
       output = interpretSubShell(subShell, state);
     });
@@ -60,6 +65,14 @@ describe('subShell', () => {
 
     it('sends a reference to each file descriptor in the state', () => {
       expect(state.fileDescriptors === statePassedToCommand.fileDescriptors).toEqual(true);
+    });
+
+    it('returns the output of the command', () => {
+      expect(output).toEqual([{
+        stdout: 'stdout',
+        stderr: 'stderr',
+        exitCode: 0
+      }]);
     });
   });
 });

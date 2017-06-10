@@ -1,7 +1,6 @@
 import {configuration} from '../../src/bash-interpreter';
 import {interpretPipeline} from '../../src/helpers/pipeline';
 
-// TODO - make pipelines deal with multiple output
 describe('pipeline', () => {
   let fakeCommand = jest.fn();
   let fakeSubShell = jest.fn();
@@ -73,11 +72,11 @@ describe('pipeline', () => {
       state.fileDescriptors = {stdin: ['stdin from somewhere']};
       fakeSubShell.mockImplementation((subShell, state) => {
         calledStdIns.push(state.fileDescriptors.stdin);
-        return [{
+        return [[{
           stdout: `${subShell.list.commands[0].suffix[0].text} stdout`,
           stderr: `${subShell.list.commands[0].suffix[0].text} stderr`,
           exitCode: 0
-        }];
+        }]];
       });
       output = interpretPipeline(pipeline, state);
     });
@@ -108,11 +107,13 @@ describe('pipeline', () => {
       expect(calledStdIns[0].shift()).toEqual('stdin from somewhere');
       expect(state.fileDescriptors.stdin).toEqual([]);
     });
-    it('passes the stdout of the first command into the second command', () => {
+    it('passes only the stdout of the first command into the second command', () => {
       expect(calledStdIns[1].shift()).toEqual('first stdout');
+      expect(calledStdIns[1].shift()).toEqual(undefined);
     });
-    it('passes the stdout of the second command into the third command', () => {
+    it('passes only the stdout of the second command into the third command', () => {
       expect(calledStdIns[2].shift()).toEqual('second stdout');
+      expect(calledStdIns[2].shift()).toEqual(undefined);
     });
     it('does NOT mutate the value of the passed stdin at all (sub-shells can, but not it)', () => {
       expect(state.fileDescriptors.stdin).toEqual(['stdin from somewhere']);
@@ -237,11 +238,11 @@ describe('pipeline', () => {
     let output = {};
 
     beforeEach(() => {
-      fakeSubShell.mockReturnValue([{
+      fakeSubShell.mockReturnValue([[{
         stdout: 'stdout',
         stderr: 'stderr',
         exitCode: 0
-      }]);
+      }]]);
       output = interpretPipeline(pipeline, state);
     });
 

@@ -2,6 +2,7 @@ import {configuration} from "../bash-interpreter";
 import {assignParameters} from "./parameters";
 import {expandTextBlocks} from "./expansion";
 
+// TODO - add a test for expansion of a sub-shell with multiple outputs
 function expandCommand(expansion, state) {
   let subShelledCommand = {
     "type": "Subshell",
@@ -10,8 +11,11 @@ function expandCommand(expansion, state) {
       "commands": expansion.commandAST.commands
     }
   };
-  let subShellOutput = configuration.commandTypeMap[subShelledCommand.type](subShelledCommand, state);
-  return subShellOutput.stdout.trim();
+  let subShellOutputList = configuration.commandTypeMap[subShelledCommand.type](subShelledCommand, state);
+  let output = subShellOutputList.map((output) => {
+    return [output.stdout, output.stderr].join(' ')
+  }).join(' ');
+  return output.trim();
 }
 
 function interpretCommand(command, state) {
