@@ -47,6 +47,9 @@ describe('bashInterpreter integration', () => {
       },
       interpreterOutputPrintable: false,
       interpreterState: {
+        fileDescriptors: {
+          stdin: []
+        },
         shellScope: {
           'c': 'd'
         },
@@ -67,7 +70,11 @@ describe('bashInterpreter integration', () => {
       newState = bashInterpreter(incomingState);
     });
     it('calls the fake command with the parts in the suffix', () => {
-      expect(fakeCommand).toBeCalledWith(incomingState.interpreterState.exportedScope, ['a literal string']);
+      expect(fakeCommand).toBeCalledWith(
+        incomingState.interpreterState.exportedScope,
+        incomingState.interpreterState.fileDescriptors,
+        ['a literal string']
+      );
     });
     it('returns the stdout of the fake command in the interpreter output (will make more sense when this streams)', () => {
       expect(newState.interpreterOutput[0].stdout).toEqual('something\n');
@@ -147,6 +154,9 @@ describe('bashInterpreter integration', () => {
       },
       interpreterOutputPrintable: false,
       interpreterState: {
+        fileDescriptors: {
+          stdin: []
+        },
         shellScope: {
           'c': 'd'
         },
@@ -159,7 +169,7 @@ describe('bashInterpreter integration', () => {
       newState = bashInterpreter(incomingState);
     });
     it('calls the fake command with whatever was expanded from the suffix', () => {
-      expect(fakeCommand).toBeCalledWith({'a':'b'}, ['something']);
+      expect(fakeCommand).toBeCalledWith({'a':'b'}, incomingState.interpreterState.fileDescriptors, ['something']);
     });
   });
 
@@ -219,6 +229,9 @@ describe('bashInterpreter integration', () => {
       },
       interpreterOutputPrintable: false,
       interpreterState: {
+        fileDescriptors: {
+          stdin: []
+        },
         shellScope: {
           'c': 'd'
         },
@@ -232,7 +245,7 @@ describe('bashInterpreter integration', () => {
     });
 
     it('calls the fake command with correct outcomes for assignment and extraction', () => {
-      expect(fakeCommand).toBeCalledWith({'a': 'b'}, ['something', 'd']);
+      expect(fakeCommand).toBeCalledWith({'a': 'b'}, incomingState.interpreterState.fileDescriptors, ['something', 'd']);
     });
   });
 
@@ -315,6 +328,9 @@ describe('bashInterpreter integration', () => {
       },
       interpreterOutputPrintable: false,
       interpreterState: {
+        fileDescriptors: {
+          stdin: []
+        },
         shellScope: {},
         commandScope: {},
         exportedScope: {}
@@ -332,7 +348,7 @@ describe('bashInterpreter integration', () => {
     });
 
     it('the commands share state (variables assignment gets picked up in next command)', () => {
-      expect(fakeCommand).toBeCalledWith({}, ['asvalue']);
+      expect(fakeCommand).toBeCalledWith({}, incomingState.interpreterState.fileDescriptors, ['asvalue']);
     });
     it('returns a blank stdout and the fake command stdout', () => {
       expect(newState.interpreterOutput[0].stdout).toEqual('');
@@ -366,6 +382,9 @@ describe('bashInterpreter integration', () => {
       },
       interpreterOutputPrintable: false,
       interpreterState: {
+        fileDescriptors: {
+          stdin: []
+        },
         shellScope: {},
         commandScope: {},
         exportedScope: {}
@@ -409,7 +428,7 @@ describe('bashInterpreter integration', () => {
     });
 
     it('assigns the output of the sub-shell into that parameter in shell scope', () => {
-      expect(fakeCommand).toBeCalledWith({}, ['asvalue']);
+      expect(fakeCommand).toBeCalledWith({}, incomingState.interpreterState.fileDescriptors, ['asvalue']);
     });
   });
 
